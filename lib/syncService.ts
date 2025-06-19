@@ -26,7 +26,7 @@ class SyncService {
       }
 
       // Update GitHub API config
-      githubApi.updateConfig({
+      githubApi.setApiConfig({
         repoUrl: config.repoUrl,
         token: config.token,
       });
@@ -112,7 +112,7 @@ class SyncService {
       }
 
       // Update GitHub API config
-      githubApi.updateConfig({
+      githubApi.setApiConfig({
         repoUrl: config.repoUrl,
         token: config.token,
       });

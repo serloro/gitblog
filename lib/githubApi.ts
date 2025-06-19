@@ -26,7 +26,7 @@ class GitHubApiService {
     });
   }
 
-  updateConfig(config: GitHubConfig) {
+  setApiConfig(config: GitHubConfig) {
     const { owner, repo } = this.parseRepoUrl(config.repoUrl);
     this.owner = owner;
     this.repo = repo;
@@ -259,7 +259,7 @@ class GitHubApiService {
     }
   }
 
-  async updateConfig(content: string, sha: string): Promise<void> {
+  async updateJekyllConfig(content: string, sha: string): Promise<void> {
     try {
       const encodedContent = encode(content);
       

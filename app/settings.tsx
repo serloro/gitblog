@@ -52,7 +52,7 @@ export default function SettingsScreen() {
 
   const testConnectionSilently = async (config: { repoUrl: string; token: string }) => {
     try {
-      githubApi.updateConfig({
+      githubApi.setApiConfig({
         repoUrl: config.repoUrl,
         token: config.token,
       });
@@ -77,7 +77,7 @@ export default function SettingsScreen() {
         username: username.trim(),
       });
       
-      githubApi.updateConfig({
+      githubApi.setApiConfig({
         repoUrl: repoUrl.trim(),
         token: token.trim(),
       });
@@ -103,7 +103,7 @@ export default function SettingsScreen() {
     setConnectionStatus('idle');
     
     try {
-      githubApi.updateConfig({
+      githubApi.setApiConfig({
         repoUrl: repoUrl.trim(),
         token: token.trim(),
       });
