@@ -1,22 +1,35 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "GitBlog",
+    "slug": "gitblog",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "icon": "./assets/images/ICONO_GITBLOG.png",
+    "scheme": "gitblog",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/ICONO_GITBLOG_SPLASHSCREEN.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e7fff"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/images/ICONO_GITBLOG.png"
+    },
+    "android": {
+      "icon": "./assets/images/ICONO_GITBLOG.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/ICONO_GITBLOG.png",
+        "backgroundColor": "#1e7fff"
+      }
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/ICONO_GITBLOG.png"
     },
-    "plugins": ["expo-router", "expo-font", "expo-web-browser"],
+    "plugins": ["expo-router", "expo-font", "expo-web-browser", "expo-splash-screen"],
     "experiments": {
       "typedRoutes": true
     }
