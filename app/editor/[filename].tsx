@@ -3,7 +3,8 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { WysiwygEditor } from '@/components/WysiwygEditor';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
+import { TagsInput } from '@/components/TagsInput';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { localStorageService } from '@/lib/localStorageService';
@@ -21,7 +22,7 @@ export default function EditorScreen() {
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const { isDark, theme } = useTheme();
+  const { theme } = useTheme();
 
   useEffect(() => {
     loadPost();
@@ -187,15 +188,23 @@ export default function EditorScreen() {
               mode="outlined"
               style={styles.input}
             />
+            
+            <TagsInput
+              tags={tags}
+              onTagsChange={setTags}
+            />
+
             <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
               {t('editor.contentLabel')}
             </Text>
-            <WysiwygEditor
+            
+            <MarkdownEditor
               value={content}
               onChangeText={setContent}
               placeholder={t('editor.contentPlaceholder')}
-              showPreview={true}
-              isEditorMode={true}
+              title={title}
+              date={post.date}
+              tags={tags}
             />
           </Card.Content>
         </Card>

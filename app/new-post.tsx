@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, Card, Chip } from 'react-native-paper';
+import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
-import { WysiwygEditor } from '@/components/WysiwygEditor';
-import { MarkdownPreview } from '@/components/MarkdownPreview';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
+import { TagsInput } from '@/components/TagsInput';
 import { localStorageService } from '@/lib/localStorageService';
 import { BlogPost } from '@/types/BlogPost';
 import { useTheme } from '@/components/ThemeProvider';
@@ -15,10 +15,8 @@ export default function NewPostScreen() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
   const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const { isDark, theme } = useTheme();
+  const { theme } = useTheme();
 
   const generateFilename = () => {
     const date = format(new Date(), 'yyyy-MM-dd');
@@ -28,17 +26,6 @@ export default function NewPostScreen() {
       .replace(/-+/g, '-')
       .trim();
     return `${date}-${slug}.md`;
-  };
-
-  const addTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag('');
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
   const savePost = async () => {
@@ -139,57 +126,23 @@ export default function NewPostScreen() {
               placeholder={t('newPost.titlePlaceholder')}
             />
 
-            <View style={styles.tagsSection}>
-              <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
-                {t('newPost.tags')}
-              </Text>
-              <View style={styles.tagInput}>
-                <TextInput
-                  label={t('newPost.addTag')}
-                  value={newTag}
-                  onChangeText={setNewTag}
-                  mode="outlined"
-                  style={styles.tagTextInput}
-                  onSubmitEditing={addTag}
-                  returnKeyType="done"
-                />
-                <Button mode="contained" onPress={addTag} style={styles.addButton}>
-                  {t('newPost.add')}
-                </Button>
-              </View>
-              <View style={styles.tagsList}>
-                {tags.map(tag => (
-                  <Chip
-                    key={tag}
-                    onClose={() => removeTag(tag)}
-                    style={styles.tag}
-                  >
-                    {tag}
-                  </Chip>
-                ))}
-              </View>
-            </View>
+            <TagsInput
+              tags={tags}
+              onTagsChange={setTags}
+            />
 
             <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
               {t('newPost.content')}
             </Text>
             
-            {showPreview ? (
-              <MarkdownPreview 
-                content={content}
-                title={title || 'Preview'}
-                date={new Date()}
-                tags={tags}
-              />
-            ) : (
-              <WysiwygEditor
-                value={content}
-                onChangeText={setContent}
-                placeholder={t('newPost.contentPlaceholder')}
-                showPreview={showPreview}
-                onTogglePreview={() => setShowPreview(!showPreview)}
-              />
-            )}
+            <MarkdownEditor
+              value={content}
+              onChangeText={setContent}
+              placeholder={t('newPost.contentPlaceholder')}
+              title={title}
+              date={new Date()}
+              tags={tags}
+            />
 
             {title && (
               <View style={dynamicStyles.preview}>
@@ -231,29 +184,6 @@ export default function NewPostScreen() {
 const styles = StyleSheet.create({
   input: {
     marginBottom: 16,
-  },
-  tagsSection: {
-    marginBottom: 16,
-  },
-  tagInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  tagTextInput: {
-    flex: 1,
-    marginRight: 8,
-  },
-  addButton: {
-    backgroundColor: '#3b82f6',
-  },
-  tagsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  tag: {
-    marginRight: 8,
-    marginBottom: 4,
   },
   cancelButton: {
     flex: 1,
