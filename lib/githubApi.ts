@@ -278,6 +278,89 @@ class GitHubApiService {
     }
   }
 
+  async enableGitHubPages(): Promise<{ url: string; status: string }> {
+    try {
+      // First, try to get current Pages configuration
+      let currentConfig;
+      try {
+        const response = await this.api.get(`/repos/${this.owner}/${this.repo}/pages`);
+        currentConfig = response.data;
+      } catch (error) {
+        // Pages not configured yet
+        currentConfig = null;
+      }
+
+      // If Pages is not enabled or needs to be updated, configure it
+      if (!currentConfig) {
+        // Enable GitHub Pages with source from main/master branch
+        await this.api.post(`/repos/${this.owner}/${this.repo}/pages`, {
+          source: {
+            branch: 'main',
+            path: '/'
+          }
+        });
+      }
+
+      // Get the updated Pages configuration
+      const pagesResponse = await this.api.get(`/repos/${this.owner}/${this.repo}/pages`);
+      
+      return {
+        url: pagesResponse.data.html_url,
+        status: pagesResponse.data.status
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          throw new Error('Repository not found or Pages not available for this repository');
+        } else if (error.response?.status === 422) {
+          // Try with 'master' branch if 'main' doesn't exist
+          try {
+            await this.api.post(`/repos/${this.owner}/${this.repo}/pages`, {
+              source: {
+                branch: 'master',
+                path: '/'
+              }
+            });
+            
+            const pagesResponse = await this.api.get(`/repos/${this.owner}/${this.repo}/pages`);
+            return {
+              url: pagesResponse.data.html_url,
+              status: pagesResponse.data.status
+            };
+          } catch (masterError) {
+            throw new Error('Failed to enable GitHub Pages. Make sure your repository has a main or master branch.');
+          }
+        }
+      }
+      throw new Error('Failed to enable GitHub Pages');
+    }
+  }
+
+  async triggerPagesBuild(): Promise<void> {
+    try {
+      await this.api.post(`/repos/${this.owner}/${this.repo}/pages/builds`);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          throw new Error('GitHub Pages not enabled for this repository');
+        }
+      }
+      throw new Error('Failed to trigger Pages build');
+    }
+  }
+
+  async getPagesBuildStatus(): Promise<{ status: string; url?: string }> {
+    try {
+      const response = await this.api.get(`/repos/${this.owner}/${this.repo}/pages/builds/latest`);
+      return {
+        status: response.data.status,
+        url: response.data.url
+      };
+    } catch (error) {
+      throw new Error('Failed to get Pages build status');
+    }
+  }
+
   private getDefaultJekyllConfig(): string {
     return `# ----------------------------------------
 # Información básica del sitio

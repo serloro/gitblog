@@ -10,7 +10,7 @@ const translations: Translations = {
     'nav.posts': 'Posts',
     'nav.newPost': 'New Post',
     'nav.settings': 'Settings',
-    'nav.publish': 'Publish All',
+    'nav.publish': 'Publish & Refresh Pages',
     
     // Posts Screen
     'posts.title': 'My Blog',
@@ -139,7 +139,7 @@ const translations: Translations = {
     'nav.posts': 'Publicaciones',
     'nav.newPost': 'Nueva Publicación',
     'nav.settings': 'Configuración',
-    'nav.publish': 'Publicar Todo',
+    'nav.publish': 'Publicar y Actualizar Pages',
     
     // Posts Screen
     'posts.title': 'Mi Blog',

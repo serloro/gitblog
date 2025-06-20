@@ -9,6 +9,7 @@ interface SyncResult {
   message: string;
   synced: number;
   errors: string[];
+  pagesUrl?: string;
 }
 
 class SyncService {
@@ -92,6 +93,116 @@ class SyncService {
       return {
         success: false,
         message: 'Sync failed',
+        synced: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
+    }
+  }
+
+  async publishAndRefreshGitHubPages(): Promise<SyncResult> {
+    try {
+      // Check if GitHub is configured
+      const config = await configService.getConfig();
+      if (!config.repoUrl || !config.token) {
+        return {
+          success: false,
+          message: 'GitHub not configured',
+          synced: 0,
+          errors: ['Please configure GitHub settings first']
+        };
+      }
+
+      // Update GitHub API config
+      githubApi.setApiConfig({
+        repoUrl: config.repoUrl,
+        token: config.token,
+      });
+
+      // Test connection
+      await githubApi.testConnection();
+
+      const errors: string[] = [];
+      let synced = 0;
+
+      // Step 1: Sync Jekyll configuration
+      try {
+        const jekyllConfig = await configService.getJekyllConfig();
+        const result = await this.syncJekyllConfig(jekyllConfig);
+        if (!result.success) {
+          errors.push('Failed to sync Jekyll configuration');
+        } else {
+          synced++;
+        }
+      } catch (error) {
+        errors.push(`Jekyll config sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Step 2: Sync all posts
+      const localPosts = await localStorageService.getPosts();
+      
+      for (const post of localPosts) {
+        try {
+          const content = createPostContent({
+            title: post.title,
+            date: post.date,
+            tags: post.tags,
+            content: post.content
+          });
+
+          // Try to get existing post
+          try {
+            const existingPost = await githubApi.getPost(post.filename);
+            // Update existing post
+            await githubApi.updatePost(post.filename, content, existingPost.sha);
+          } catch (error) {
+            // Post doesn't exist, create new one
+            await githubApi.createPost(post.filename, content);
+          }
+          
+          synced++;
+        } catch (error) {
+          errors.push(`Failed to sync ${post.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Step 3: Enable GitHub Pages if not already enabled
+      let pagesUrl = '';
+      try {
+        const pagesResult = await githubApi.enableGitHubPages();
+        pagesUrl = pagesResult.url;
+      } catch (error) {
+        errors.push(`Failed to enable GitHub Pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Step 4: Trigger a new build
+      try {
+        await githubApi.triggerPagesBuild();
+      } catch (error) {
+        errors.push(`Failed to trigger Pages build: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Update sync settings
+      await localStorageService.saveSettings({
+        syncEnabled: true,
+        lastSync: new Date()
+      });
+
+      const successMessage = pagesUrl 
+        ? `Published ${synced} items to GitHub and refreshed Pages. Site available at: ${pagesUrl}`
+        : `Published ${synced} items to GitHub and triggered Pages refresh`;
+
+      return {
+        success: errors.length === 0,
+        message: successMessage,
+        synced,
+        errors,
+        pagesUrl
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Publish and refresh failed',
         synced: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error']
       };

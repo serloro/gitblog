@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Animated, TouchableOpacity, Text } from 'react-native';
-import { Plus, Settings, Upload, Menu } from 'lucide-react-native';
+import { Plus, Settings, Globe, Menu } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useTheme } from './ThemeProvider';
 import { t } from '@/lib/i18n';
-import { syncService } from '@/lib/syncService';
 
 interface FloatingActionButtonsProps {
-  onSyncPress?: () => void;
+  onPublishPress?: () => void;
 }
 
-export function FloatingActionButtons({ onSyncPress }: FloatingActionButtonsProps) {
+export function FloatingActionButtons({ onPublishPress }: FloatingActionButtonsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [animation] = useState(new Animated.Value(0));
   const { theme } = useTheme();
@@ -50,7 +49,7 @@ export function FloatingActionButtons({ onSyncPress }: FloatingActionButtonsProp
     router.push('/settings');
   };
 
-  const handleSync = () => {
+  const handlePublish = () => {
     setIsExpanded(false);
     Animated.spring(animation, {
       toValue: 0,
@@ -58,7 +57,7 @@ export function FloatingActionButtons({ onSyncPress }: FloatingActionButtonsProp
       tension: 100,
       friction: 8,
     }).start();
-    onSyncPress?.();
+    onPublishPress?.();
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -109,20 +108,21 @@ export function FloatingActionButtons({ onSyncPress }: FloatingActionButtonsProp
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 4,
+      minWidth: 120,
     },
     tooltipText: {
       color: theme.colors.inverseOnSurface,
       fontSize: 12,
       fontWeight: '500',
-      whiteSpace: 'nowrap',
+      textAlign: 'center',
     },
   });
 
   const secondaryButtons = [
     {
-      icon: Upload,
-      onPress: handleSync,
-      tooltip: t('nav.publish'),
+      icon: Globe,
+      onPress: handlePublish,
+      tooltip: 'Publish & Refresh Pages',
       color: theme.colors.onSurface,
     },
     {

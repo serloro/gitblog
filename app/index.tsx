@@ -18,7 +18,7 @@ export default function PostsScreen() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -58,20 +58,48 @@ export default function PostsScreen() {
     loadPosts();
   };
 
-  const handleSyncPress = async () => {
-    setSyncing(true);
+  const handlePublishPress = async () => {
+    setPublishing(true);
     try {
-      const result = await syncService.syncToGitHub();
+      const result = await syncService.publishAndRefreshGitHubPages();
       
       if (result.success) {
-        Alert.alert(t('common.success'), result.message);
+        Alert.alert(
+          '🎉 ¡Publicación Exitosa!', 
+          result.message + '\n\n' + 
+          (result.pagesUrl ? `Tu sitio estará disponible en unos minutos en:\n${result.pagesUrl}` : 'GitHub Pages se está actualizando...'),
+          [
+            {
+              text: 'Ver Sitio',
+              onPress: () => {
+                if (result.pagesUrl) {
+                  // In a real app, you would open the URL in a browser
+                  console.log('Opening:', result.pagesUrl);
+                }
+              },
+              style: 'default'
+            },
+            {
+              text: 'OK',
+              style: 'cancel'
+            }
+          ]
+        );
       } else {
-        Alert.alert(t('settings.syncFailed'), result.message + '\n\n' + result.errors.join('\n'));
+        Alert.alert(
+          '⚠️ Publicación con Errores', 
+          result.message + '\n\nErrores:\n' + result.errors.join('\n'),
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      Alert.alert(t('common.error'), t('settings.syncFailed'));
+      Alert.alert(
+        '❌ Error de Publicación', 
+        'No se pudo publicar el sitio. Verifica tu configuración de GitHub.',
+        [{ text: 'OK' }]
+      );
     } finally {
-      setSyncing(false);
+      setPublishing(false);
     }
   };
 
@@ -139,10 +167,48 @@ export default function PostsScreen() {
       lineHeight: 20,
       marginBottom: 16,
     },
+    publishingOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    publishingCard: {
+      backgroundColor: theme.colors.surface,
+      padding: 24,
+      borderRadius: 12,
+      margin: 32,
+      alignItems: 'center',
+    },
+    publishingText: {
+      color: theme.colors.onSurface,
+      textAlign: 'center',
+      marginTop: 16,
+    },
   });
 
   return (
     <SafeAreaView style={dynamicStyles.container}>
+      {publishing && (
+        <View style={dynamicStyles.publishingOverlay}>
+          <Card style={dynamicStyles.publishingCard}>
+            <Card.Content style={{ alignItems: 'center' }}>
+              <Text variant="titleMedium" style={dynamicStyles.publishingText}>
+                🚀 Publicando en GitHub Pages...
+              </Text>
+              <Text variant="bodyMedium" style={[dynamicStyles.publishingText, { marginTop: 8 }]}>
+                Sincronizando posts y configuración
+              </Text>
+            </Card.Content>
+          </Card>
+        </View>
+      )}
+
       <View style={dynamicStyles.header}>
         <View style={styles.titleRow}>
           <View>
@@ -237,7 +303,7 @@ export default function PostsScreen() {
         )}
       </ScrollView>
 
-      <FloatingActionButtons onSyncPress={handleSyncPress} />
+      <FloatingActionButtons onPublishPress={handlePublishPress} />
     </SafeAreaView>
   );
 }
