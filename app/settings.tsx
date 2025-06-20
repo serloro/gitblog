@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, Card, Switch, Divider, Menu, IconButton, SegmentedButtons } from 'react-native-paper';
+import { Text, TextInput, Button, Card, Switch, Divider, Menu, IconButton, SegmentedButtons, RadioButton, Checkbox } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft, Settings as SettingsIcon } from 'lucide-react-native';
+import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft, Settings as SettingsIcon, Palette, Puzzle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { configService } from '@/lib/configService';
 import { githubApi } from '@/lib/githubApi';
@@ -34,10 +34,15 @@ export default function SettingsScreen() {
   const [jekyllAuthorEmail, setJekyllAuthorEmail] = useState('');
   const [jekyllAuthorGithub, setJekyllAuthorGithub] = useState('');
   const [jekyllAuthorTwitter, setJekyllAuthorTwitter] = useState('');
+  const [jekyllTheme, setJekyllTheme] = useState('minima');
+  const [jekyllPlugins, setJekyllPlugins] = useState<string[]>(['jekyll-feed', 'jekyll-seo-tag', 'jekyll-sitemap']);
   const [savingJekyll, setSavingJekyll] = useState(false);
   
   const { isDark, toggleTheme, theme } = useTheme();
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
+
+  const availableThemes = configService.getAvailableThemes();
+  const availablePlugins = configService.getAvailablePlugins();
 
   useEffect(() => {
     loadSettings();
@@ -64,6 +69,8 @@ export default function SettingsScreen() {
       setJekyllAuthorEmail(jekyllConfig.authorEmail);
       setJekyllAuthorGithub(jekyllConfig.authorGithub);
       setJekyllAuthorTwitter(jekyllConfig.authorTwitter);
+      setJekyllTheme(jekyllConfig.theme);
+      setJekyllPlugins(jekyllConfig.plugins);
       
       // Test connection if config exists
       if (config.repoUrl && config.token) {
@@ -130,6 +137,8 @@ export default function SettingsScreen() {
         authorEmail: jekyllAuthorEmail,
         authorGithub: jekyllAuthorGithub,
         authorTwitter: jekyllAuthorTwitter,
+        theme: jekyllTheme,
+        plugins: jekyllPlugins,
       });
 
       // Sync to GitHub if connected
@@ -143,6 +152,8 @@ export default function SettingsScreen() {
           authorEmail: jekyllAuthorEmail,
           authorGithub: jekyllAuthorGithub,
           authorTwitter: jekyllAuthorTwitter,
+          theme: jekyllTheme,
+          plugins: jekyllPlugins,
         });
 
         if (result.success) {
@@ -268,6 +279,14 @@ export default function SettingsScreen() {
     }
   };
 
+  const togglePlugin = (pluginValue: string) => {
+    setJekyllPlugins(prev => 
+      prev.includes(pluginValue)
+        ? prev.filter(p => p !== pluginValue)
+        : [...prev, pluginValue]
+    );
+  };
+
   const extractRepoInfo = (url: string) => {
     const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
     return match ? { owner: match[1], repo: match[2] } : null;
@@ -371,6 +390,43 @@ export default function SettingsScreen() {
     segmentedButtons: {
       marginHorizontal: 16,
       marginBottom: 16,
+    },
+    themeOption: {
+      marginBottom: 12,
+    },
+    themeDescription: {
+      fontSize: 12,
+      color: theme.colors.onSurfaceVariant,
+      marginLeft: 32,
+      marginTop: 4,
+    },
+    pluginCategory: {
+      marginBottom: 16,
+    },
+    categoryTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.onSurface,
+      marginBottom: 8,
+    },
+    pluginOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    pluginInfo: {
+      flex: 1,
+      marginLeft: 8,
+    },
+    pluginLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.onSurface,
+    },
+    pluginDescription: {
+      fontSize: 12,
+      color: theme.colors.onSurfaceVariant,
+      marginTop: 2,
     },
   });
 
@@ -618,6 +674,75 @@ export default function SettingsScreen() {
             placeholder="@tuusuario"
             autoCapitalize="none"
           />
+        </Card.Content>
+      </Card>
+
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <Palette size={24} color="#3b82f6" />
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              Tema del Sitio
+            </Text>
+          </View>
+
+          <Text variant="bodyMedium" style={dynamicStyles.helpText}>
+            Selecciona el tema visual para tu sitio Jekyll
+          </Text>
+
+          <RadioButton.Group onValueChange={setJekyllTheme} value={jekyllTheme}>
+            {availableThemes.map((theme) => (
+              <View key={theme.value} style={dynamicStyles.themeOption}>
+                <RadioButton.Item
+                  label={theme.label}
+                  value={theme.value}
+                  labelStyle={{ color: dynamicStyles.sectionTitle.color }}
+                />
+                <Text style={dynamicStyles.themeDescription}>
+                  {theme.description}
+                </Text>
+              </View>
+            ))}
+          </RadioButton.Group>
+        </Card.Content>
+      </Card>
+
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <Puzzle size={24} color="#3b82f6" />
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              Plugins de Jekyll
+            </Text>
+          </View>
+
+          <Text variant="bodyMedium" style={dynamicStyles.helpText}>
+            Selecciona los plugins que quieres activar en tu sitio Jekyll
+          </Text>
+
+          {availablePlugins.map((category) => (
+            <View key={category.category} style={dynamicStyles.pluginCategory}>
+              <Text style={dynamicStyles.categoryTitle}>
+                {category.category}
+              </Text>
+              {category.plugins.map((plugin) => (
+                <View key={plugin.value} style={dynamicStyles.pluginOption}>
+                  <Checkbox
+                    status={jekyllPlugins.includes(plugin.value) ? 'checked' : 'unchecked'}
+                    onPress={() => togglePlugin(plugin.value)}
+                  />
+                  <View style={dynamicStyles.pluginInfo}>
+                    <Text style={dynamicStyles.pluginLabel}>
+                      {plugin.label}
+                    </Text>
+                    <Text style={dynamicStyles.pluginDescription}>
+                      {plugin.description}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ))}
 
           <Button
             mode="contained"

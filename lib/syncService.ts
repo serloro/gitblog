@@ -156,6 +156,8 @@ class SyncService {
     authorEmail: string;
     authorGithub: string;
     authorTwitter: string;
+    theme: string;
+    plugins: string[];
   }): Promise<SyncResult> {
     try {
       // Check if GitHub is configured
@@ -182,18 +184,7 @@ class SyncService {
       const existingConfig = await githubApi.getJekyllConfig();
       
       // Generate new config content
-      const configContent = githubApi.generateJekyllConfig({
-        title: jekyllConfig.title,
-        description: jekyllConfig.description,
-        url: jekyllConfig.url,
-        baseurl: jekyllConfig.baseurl,
-        author: {
-          name: jekyllConfig.authorName,
-          email: jekyllConfig.authorEmail,
-          github: jekyllConfig.authorGithub,
-          twitter: jekyllConfig.authorTwitter,
-        }
-      });
+      const configContent = githubApi.generateJekyllConfig(jekyllConfig);
 
       // Update Jekyll config
       await githubApi.updateJekyllConfig(configContent, existingConfig.sha || undefined);

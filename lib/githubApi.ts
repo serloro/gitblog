@@ -311,10 +311,6 @@ plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
-  - jekyll-paginate
-  - jekyll-archives
-  - jekyll-relative-links
-  - jekyll-include-cache
 
 # ----------------------------------------
 # Excluir del build
@@ -378,12 +374,26 @@ kramdown:
       if (key === 'description') config.description = value;
       if (key === 'url') config.url = value;
       if (key === 'baseurl') config.baseurl = value;
+      if (key === 'theme') config.theme = value;
     }
     
     return config;
   }
 
-  generateJekyllConfig(config: Partial<JekyllConfig>): string {
+  generateJekyllConfig(config: {
+    title: string;
+    description: string;
+    url: string;
+    baseurl: string;
+    authorName: string;
+    authorEmail: string;
+    authorGithub: string;
+    authorTwitter: string;
+    theme: string;
+    plugins: string[];
+  }): string {
+    const pluginsYaml = config.plugins.map(plugin => `  - ${plugin}`).join('\n');
+    
     return `# ----------------------------------------
 # Información básica del sitio
 # ----------------------------------------
@@ -396,30 +406,24 @@ baseurl: "${config.baseurl || ''}"
 # Datos del autor
 # ----------------------------------------
 author:
-  name: "${config.author?.name || this.owner}"
-  email: "${config.author?.email || 'tu@email.com'}"
-  github: "${config.author?.github || `https://github.com/${this.owner}`}"
-  twitter: "${config.author?.twitter || `@${this.owner}`}"
+  name: "${config.authorName || this.owner}"
+  email: "${config.authorEmail || 'tu@email.com'}"
+  github: "${config.authorGithub || `https://github.com/${this.owner}`}"
+  twitter: "${config.authorTwitter || `@${this.owner}`}"
 
 # ----------------------------------------
 # Tema y apariencia
 # ----------------------------------------
 theme: ${config.theme || 'minima'}
-permalink: ${config.permalink || '/:categories/:title/'}
-paginate: ${config.paginate || 5}
-paginate_path: "${config.paginate_path || '/page:num'}"
+permalink: /:categories/:title/
+paginate: 5
+paginate_path: "/page:num"
 
 # ----------------------------------------
 # Plugins
 # ----------------------------------------
 plugins:
-  - jekyll-feed
-  - jekyll-seo-tag
-  - jekyll-sitemap
-  - jekyll-paginate
-  - jekyll-archives
-  - jekyll-relative-links
-  - jekyll-include-cache
+${pluginsYaml}
 
 # ----------------------------------------
 # Excluir del build
@@ -435,33 +439,33 @@ exclude:
 # Configuración del feed
 # ----------------------------------------
 feed:
-  path: ${config.feed?.path || 'rss.xml'}
+  path: rss.xml
 
 # ----------------------------------------
 # SEO tags
 # ----------------------------------------
 seo:
-  type: ${config.seo?.type || 'Blog'}
+  type: Blog
   twitter:
-    username: "${config.seo?.twitter?.username || `@${this.owner}`}"
-    card: "${config.seo?.twitter?.card || 'summary_large_image'}"
+    username: "${config.authorTwitter || `@${this.owner}`}"
+    card: "summary_large_image"
 
 # ----------------------------------------
 # Datos extra para _data/*.yml
 # ----------------------------------------
 social_links:
   - name: GitHub
-    url: ${config.author?.github || `https://github.com/${this.owner}`}
+    url: ${config.authorGithub || `https://github.com/${this.owner}`}
   - name: Twitter
-    url: ${config.author?.twitter?.replace('@', 'https://twitter.com/') || `https://twitter.com/${this.owner}`}
+    url: ${config.authorTwitter?.replace('@', 'https://twitter.com/') || `https://twitter.com/${this.owner}`}
 
 # ----------------------------------------
 # Markdown
 # ----------------------------------------
-markdown: ${config.markdown || 'kramdown'}
+markdown: kramdown
 kramdown:
-  input: ${config.kramdown?.input || 'GFM'}
-  hard_wrap: ${config.kramdown?.hard_wrap || false}
+  input: GFM
+  hard_wrap: false
 `;
   }
 }

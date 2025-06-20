@@ -16,6 +16,8 @@ interface JekyllSiteConfig {
   authorEmail: string;
   authorGithub: string;
   authorTwitter: string;
+  theme: string;
+  plugins: string[];
 }
 
 const STORAGE_KEY = 'gitblog_config';
@@ -106,6 +108,8 @@ class ConfigService {
           authorEmail: '',
           authorGithub: '',
           authorTwitter: '',
+          theme: 'minima',
+          plugins: ['jekyll-feed', 'jekyll-seo-tag', 'jekyll-sitemap'],
         };
       }
 
@@ -120,8 +124,53 @@ class ConfigService {
         authorEmail: '',
         authorGithub: '',
         authorTwitter: '',
+        theme: 'minima',
+        plugins: ['jekyll-feed', 'jekyll-seo-tag', 'jekyll-sitemap'],
       };
     }
+  }
+
+  getAvailableThemes() {
+    return [
+      { value: 'minima', label: 'Minima (Por defecto)', description: 'Tema limpio y minimalista' },
+      { value: 'jekyll-theme-cayman', label: 'Cayman', description: 'Tema moderno con header destacado' },
+      { value: 'jekyll-theme-merlot', label: 'Merlot', description: 'Tema elegante y sofisticado' },
+      { value: 'jekyll-theme-hacker', label: 'Hacker', description: 'Estilo terminal retro' },
+      { value: 'jekyll-theme-slate', label: 'Slate', description: 'Tema oscuro profesional' },
+      { value: 'jekyll-theme-modernist', label: 'Modernist', description: 'Diseño moderno y limpio' },
+    ];
+  }
+
+  getAvailablePlugins() {
+    return [
+      {
+        category: '🔍 SEO y metadatos',
+        plugins: [
+          { value: 'jekyll-seo-tag', label: 'SEO Tag', description: 'Añade metaetiquetas para SEO, OG, Twitter' },
+          { value: 'jekyll-sitemap', label: 'Sitemap', description: 'Genera sitemap.xml automático' },
+          { value: 'jekyll-feed', label: 'Feed RSS', description: 'Crea feed RSS automático' },
+        ]
+      },
+      {
+        category: '📂 Organización y navegación',
+        plugins: [
+          { value: 'jekyll-paginate', label: 'Paginación', description: 'Paginación entre posts' },
+          { value: 'jekyll-archives', label: 'Archivos', description: 'Agrupa por año/mes/categoría' },
+          { value: 'jekyll-toc', label: 'Índice', description: 'Genera índice (table of contents)' },
+          { value: 'jekyll-redirect-from', label: 'Redirecciones', description: 'Redirecciones de URLs antiguas' },
+        ]
+      },
+      {
+        category: '✨ Contenido y funcionalidad',
+        plugins: [
+          { value: 'jekyll-include-cache', label: 'Cache de Includes', description: 'Mejora rendimiento de includes' },
+          { value: 'jekyll-relative-links', label: 'Enlaces Relativos', description: 'Convierte enlaces relativos a válidos' },
+          { value: 'jekyll-multiple-languages-plugin', label: 'Multilenguaje', description: 'Soporte multilenguaje' },
+          { value: 'jekyll-assets', label: 'Gestión de Assets', description: 'Gestión avanzada de CSS, JS, imágenes' },
+          { value: 'jekyll-analytics', label: 'Analytics', description: 'Añade Google Analytics fácilmente' },
+        ]
+      }
+    ];
   }
 }
 
