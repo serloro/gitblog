@@ -150,7 +150,19 @@ class SyncService {
         errors.push(`Homepage sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 3: Sync all posts
+      // Step 3: Sync README.md (automatic, not editable by user)
+      try {
+        const result = await this.syncReadme();
+        if (!result.success) {
+          errors.push('Failed to sync README');
+        } else {
+          synced++;
+        }
+      } catch (error) {
+        errors.push(`README sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Step 4: Sync all posts
       const localPosts = await localStorageService.getPosts();
       
       for (const post of localPosts) {
@@ -178,7 +190,7 @@ class SyncService {
         }
       }
 
-      // Step 4: Enable GitHub Pages if not already enabled
+      // Step 5: Enable GitHub Pages if not already enabled
       let pagesUrl = '';
       try {
         const pagesResult = await githubApi.enableGitHubPages();
@@ -187,7 +199,7 @@ class SyncService {
         errors.push(`Failed to enable GitHub Pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 5: Trigger a new build
+      // Step 6: Trigger a new build
       try {
         await githubApi.triggerPagesBuild();
       } catch (error) {
@@ -369,6 +381,51 @@ class SyncService {
       return {
         success: false,
         message: 'Failed to update homepage',
+        synced: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
+    }
+  }
+
+  async syncReadme(): Promise<SyncResult> {
+    try {
+      // Check if GitHub is configured
+      const config = await configService.getConfig();
+      if (!config.repoUrl || !config.token) {
+        return {
+          success: false,
+          message: 'GitHub not configured',
+          synced: 0,
+          errors: ['Please configure GitHub settings first']
+        };
+      }
+
+      // Update GitHub API config
+      githubApi.setApiConfig({
+        repoUrl: config.repoUrl,
+        token: config.token,
+      });
+
+      // Test connection
+      await githubApi.testConnection();
+
+      // Get existing README
+      const existingReadme = await githubApi.getReadme();
+      
+      // Update README with automatic content
+      await githubApi.updateReadme(existingReadme.sha || undefined);
+
+      return {
+        success: true,
+        message: 'README updated successfully',
+        synced: 1,
+        errors: []
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to update README',
         synced: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error']
       };
