@@ -478,7 +478,7 @@ Este es mi blog personal donde comparto mis pensamientos, experiencias y conocim
 
 ## Ultimas publicaciones
 
-Aqui encontraras mis articulos mas recientes. Explora las diferentes categorias y no dudes en dejar tus comentarios.
+Los posts aparecen automaticamente aqui gracias al layout 'home' de Jekyll.
 
 ## Sobre mi
 
@@ -599,53 +599,156 @@ GitBlog simplifica el proceso de creacion y mantenimiento de blogs tecnicos, per
   }
 
   private getDefaultJekyllConfig(): string {
-    return `title: "Mi Blog"
+    return `# ========================================
+# CONFIGURACION BASICA DEL SITIO
+# ========================================
+title: "Mi Blog"
 description: "Un blog sobre desarrollo web, software y tecnologia"
 url: "https://${this.owner}.github.io"
 baseurl: ""
 
+# ========================================
+# INFORMACION DEL AUTOR
+# ========================================
 author:
   name: "${this.owner}"
   email: "tu@email.com"
   github: "https://github.com/${this.owner}"
   twitter: "@${this.owner}"
 
+# ========================================
+# CONFIGURACION DE JEKYLL
+# ========================================
 theme: minima
-permalink: /:categories/:title/
-paginate: 5
-paginate_path: "/page:num"
+permalink: /:categories/:year/:month/:day/:title/
 
+# Configuracion de paginacion
+paginate: 5
+paginate_path: "/page:num/"
+
+# ========================================
+# PLUGINS ESENCIALES PARA MOSTRAR POSTS
+# ========================================
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
+  - jekyll-paginate
 
+# ========================================
+# CONFIGURACION DE MARKDOWN
+# ========================================
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+
+# ========================================
+# CONFIGURACION DE COLECCIONES Y POSTS
+# ========================================
+collections:
+  posts:
+    output: true
+    permalink: /:categories/:year/:month/:day/:title/
+
+# ========================================
+# CONFIGURACION DE DEFAULTS PARA POSTS
+# ========================================
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+      author: "${this.owner}"
+      comments: true
+  - scope:
+      path: ""
+    values:
+      layout: "default"
+
+# ========================================
+# CONFIGURACION PARA MOSTRAR POSTS EN HOME
+# ========================================
+# Mostrar extractos en la pagina principal
+show_excerpts: true
+
+# Numero de posts por pagina
+paginate: 10
+
+# Configuracion de fecha
+date_format: "%B %d, %Y"
+
+# ========================================
+# ARCHIVOS A EXCLUIR
+# ========================================
 exclude:
   - Gemfile
   - Gemfile.lock
   - node_modules
-  - vendor
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
   - README.md
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
 
+# ========================================
+# CONFIGURACION DE FEEDS Y SEO
+# ========================================
 feed:
-  path: rss.xml
+  path: feed.xml
 
+# SEO y metadatos
 seo:
   type: Blog
   twitter:
     username: "@${this.owner}"
     card: "summary_large_image"
 
+# ========================================
+# ENLACES SOCIALES
+# ========================================
 social_links:
   - name: GitHub
     url: https://github.com/${this.owner}
   - name: Twitter
     url: https://twitter.com/${this.owner}
 
-markdown: kramdown
-kramdown:
-  input: GFM
-  hard_wrap: false
+# ========================================
+# CONFIGURACION DE MINIMA THEME
+# ========================================
+minima:
+  # Configuracion especifica del tema Minima
+  social_links:
+    github: ${this.owner}
+    twitter: ${this.owner}
+  
+  # IMPORTANTE: Mostrar extractos en home para que aparezcan los posts
+  show_excerpts: true
+  
+  # Configuracion de header
+  header_pages:
+    - about.md
+
+# ========================================
+# TIMEZONE Y LENGUAJE
+# ========================================
+timezone: Europe/Madrid
+lang: es-ES
+
+# ========================================
+# CONFIGURACION ADICIONAL PARA POSTS
+# ========================================
+# Habilitar resaltado de sintaxis
+highlighter: rouge
+
+# Configuracion de posts
+future: false
+unpublished: false
 `;
   }
 
@@ -715,55 +818,159 @@ kramdown:
       .map(plugin => sanitize(plugin))
       .filter(plugin => plugin.length > 0);
     
-    const pluginsYaml = validPlugins.length > 0 
-      ? validPlugins.map(plugin => `  - ${plugin}`).join('\n')
-      : '  - jekyll-feed\n  - jekyll-seo-tag\n  - jekyll-sitemap';
+    // Always include essential plugins for posts display
+    const essentialPlugins = ['jekyll-feed', 'jekyll-seo-tag', 'jekyll-sitemap', 'jekyll-paginate'];
+    const allPlugins = [...new Set([...essentialPlugins, ...validPlugins])];
     
-    return `title: "${title}"
+    const pluginsYaml = allPlugins.map(plugin => `  - ${plugin}`).join('\n');
+    
+    return `# ========================================
+# CONFIGURACION BASICA DEL SITIO
+# ========================================
+title: "${title}"
 description: "${description}"
 url: "${url}"
 baseurl: "${baseurl}"
 
+# ========================================
+# INFORMACION DEL AUTOR
+# ========================================
 author:
   name: "${authorName}"
   email: "${authorEmail}"
   github: "${authorGithub}"
   twitter: "${authorTwitter}"
 
+# ========================================
+# CONFIGURACION DE JEKYLL
+# ========================================
 theme: ${theme}
-permalink: /:categories/:title/
-paginate: 5
-paginate_path: "/page:num"
+permalink: /:categories/:year/:month/:day/:title/
 
+# Configuracion de paginacion
+paginate: 10
+paginate_path: "/page:num/"
+
+# ========================================
+# PLUGINS ESENCIALES PARA MOSTRAR POSTS
+# ========================================
 plugins:
 ${pluginsYaml}
 
+# ========================================
+# CONFIGURACION DE MARKDOWN
+# ========================================
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+
+# ========================================
+# CONFIGURACION DE COLECCIONES Y POSTS
+# ========================================
+collections:
+  posts:
+    output: true
+    permalink: /:categories/:year/:month/:day/:title/
+
+# ========================================
+# CONFIGURACION DE DEFAULTS PARA POSTS
+# ========================================
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+      author: "${authorName}"
+      comments: true
+  - scope:
+      path: ""
+    values:
+      layout: "default"
+
+# ========================================
+# CONFIGURACION PARA MOSTRAR POSTS EN HOME
+# ========================================
+# Mostrar extractos en la pagina principal
+show_excerpts: true
+
+# Numero de posts por pagina
+paginate: 10
+
+# Configuracion de fecha
+date_format: "%B %d, %Y"
+
+# ========================================
+# ARCHIVOS A EXCLUIR
+# ========================================
 exclude:
   - Gemfile
   - Gemfile.lock
   - node_modules
-  - vendor
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
   - README.md
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
 
+# ========================================
+# CONFIGURACION DE FEEDS Y SEO
+# ========================================
 feed:
-  path: rss.xml
+  path: feed.xml
 
+# SEO y metadatos
 seo:
   type: Blog
   twitter:
     username: "${authorTwitter}"
     card: "summary_large_image"
 
+# ========================================
+# ENLACES SOCIALES
+# ========================================
 social_links:
   - name: GitHub
     url: ${authorGithub}
   - name: Twitter
     url: ${authorTwitter.replace('@', 'https://twitter.com/')}
 
-markdown: kramdown
-kramdown:
-  input: GFM
-  hard_wrap: false
+# ========================================
+# CONFIGURACION DE MINIMA THEME
+# ========================================
+minima:
+  # Configuracion especifica del tema Minima
+  social_links:
+    github: ${this.owner}
+    twitter: ${this.owner}
+  
+  # IMPORTANTE: Mostrar extractos en home para que aparezcan los posts
+  show_excerpts: true
+  
+  # Configuracion de header
+  header_pages:
+    - about.md
+
+# ========================================
+# TIMEZONE Y LENGUAJE
+# ========================================
+timezone: Europe/Madrid
+lang: es-ES
+
+# ========================================
+# CONFIGURACION ADICIONAL PARA POSTS
+# ========================================
+# Habilitar resaltado de sintaxis
+highlighter: rouge
+
+# Configuracion de posts
+future: false
+unpublished: false
 `;
   }
 }
