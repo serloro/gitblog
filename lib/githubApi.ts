@@ -13,6 +13,44 @@ interface GitHubFile {
   path: string;
 }
 
+interface JekyllConfig {
+  title: string;
+  description: string;
+  url: string;
+  baseurl: string;
+  author: {
+    name: string;
+    email: string;
+    github: string;
+    twitter: string;
+  };
+  theme: string;
+  permalink: string;
+  paginate: number;
+  paginate_path: string;
+  plugins: string[];
+  exclude: string[];
+  feed: {
+    path: string;
+  };
+  seo: {
+    type: string;
+    twitter: {
+      username: string;
+      card: string;
+    };
+  };
+  social_links: Array<{
+    name: string;
+    url: string;
+  }>;
+  markdown: string;
+  kramdown: {
+    input: string;
+    hard_wrap: boolean;
+  };
+}
+
 class GitHubApiService {
   private api: AxiosInstance;
   private owner: string = '';
@@ -69,18 +107,13 @@ class GitHubApiService {
     }
 
     try {
-      // First try the standard Jekyll posts directory
+      // Try to get posts from _posts directory (standard Jekyll structure)
       let response;
       try {
-        response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/content/_posts`);
+        response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_posts`);
       } catch (error) {
-        // If content/_posts doesn't exist, try _posts
-        try {
-          response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_posts`);
-        } catch (secondError) {
-          // If neither exists, try to create the directory structure
-          throw new Error('Posts directory not found. Please create either "content/_posts" or "_posts" directory in your repository.');
-        }
+        // If _posts doesn't exist, try to create the directory structure
+        throw new Error('Posts directory not found. Please create "_posts" directory in your repository.');
       }
       
       if (!Array.isArray(response.data)) {
@@ -104,7 +137,7 @@ class GitHubApiService {
         } else if (error.response?.status === 403) {
           throw new Error('Access denied. Please check your token permissions.');
         } else if (error.response?.status === 404) {
-          throw new Error('Posts directory not found. Please create either "content/_posts" or "_posts" directory in your repository.');
+          throw new Error('Posts directory not found. Please create "_posts" directory in your repository.');
         }
       }
       
@@ -118,13 +151,7 @@ class GitHubApiService {
 
   async getPost(filename: string): Promise<GitHubFile> {
     try {
-      // Try content/_posts first, then _posts
-      let response;
-      try {
-        response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/content/_posts/${filename}`);
-      } catch (error) {
-        response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`);
-      }
+      const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`);
       
       return {
         name: response.data.name,
@@ -146,27 +173,14 @@ class GitHubApiService {
     try {
       const encodedContent = encode(content);
       
-      // Try to create in content/_posts first
-      try {
-        await this.api.put(`/repos/${this.owner}/${this.repo}/contents/content/_posts/${filename}`, {
-          message: `Create post: ${filename}`,
-          content: encodedContent,
-          committer: {
-            name: 'GitBlog',
-            email: 'gitblog@example.com'
-          }
-        });
-      } catch (error) {
-        // If content/_posts doesn't exist, try _posts
-        await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
-          message: `Create post: ${filename}`,
-          content: encodedContent,
-          committer: {
-            name: 'GitBlog',
-            email: 'gitblog@example.com'
-          }
-        });
-      }
+      await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
+        message: `Create post: ${filename}`,
+        content: encodedContent,
+        committer: {
+          name: 'GitBlog',
+          email: 'gitblog@example.com'
+        }
+      });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 422) {
@@ -181,28 +195,15 @@ class GitHubApiService {
     try {
       const encodedContent = encode(content);
       
-      // Try content/_posts first, then _posts
-      try {
-        await this.api.put(`/repos/${this.owner}/${this.repo}/contents/content/_posts/${filename}`, {
-          message: `Update post: ${filename}`,
-          content: encodedContent,
-          sha: sha,
-          committer: {
-            name: 'GitBlog',
-            email: 'gitblog@example.com'
-          }
-        });
-      } catch (error) {
-        await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
-          message: `Update post: ${filename}`,
-          content: encodedContent,
-          sha: sha,
-          committer: {
-            name: 'GitBlog',
-            email: 'gitblog@example.com'
-          }
-        });
-      }
+      await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
+        message: `Update post: ${filename}`,
+        content: encodedContent,
+        sha: sha,
+        committer: {
+          name: 'GitBlog',
+          email: 'gitblog@example.com'
+        }
+      });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 409) {
@@ -215,36 +216,22 @@ class GitHubApiService {
 
   async deletePost(filename: string, sha: string): Promise<void> {
     try {
-      // Try content/_posts first, then _posts
-      try {
-        await this.api.delete(`/repos/${this.owner}/${this.repo}/contents/content/_posts/${filename}`, {
-          data: {
-            message: `Delete post: ${filename}`,
-            sha: sha,
-            committer: {
-              name: 'GitBlog',
-              email: 'gitblog@example.com'
-            }
+      await this.api.delete(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
+        data: {
+          message: `Delete post: ${filename}`,
+          sha: sha,
+          committer: {
+            name: 'GitBlog',
+            email: 'gitblog@example.com'
           }
-        });
-      } catch (error) {
-        await this.api.delete(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
-          data: {
-            message: `Delete post: ${filename}`,
-            sha: sha,
-            committer: {
-              name: 'GitBlog',
-              email: 'gitblog@example.com'
-            }
-          }
-        });
-      }
+        }
+      });
     } catch (error) {
       throw new Error('Failed to delete post');
     }
   }
 
-  async getConfig(): Promise<GitHubFile> {
+  async getJekyllConfig(): Promise<GitHubFile> {
     try {
       const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_config.yml`);
       
@@ -255,26 +242,227 @@ class GitHubApiService {
         path: response.data.path,
       };
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // If _config.yml doesn't exist, return a default configuration
+        return {
+          name: '_config.yml',
+          content: this.getDefaultJekyllConfig(),
+          sha: '',
+          path: '_config.yml',
+        };
+      }
       throw new Error('Failed to fetch Jekyll configuration');
     }
   }
 
-  async updateJekyllConfig(content: string, sha: string): Promise<void> {
+  async updateJekyllConfig(content: string, sha?: string): Promise<void> {
     try {
       const encodedContent = encode(content);
       
-      await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_config.yml`, {
+      const payload: any = {
         message: 'Update Jekyll configuration',
         content: encodedContent,
-        sha: sha,
         committer: {
           name: 'GitBlog',
           email: 'gitblog@example.com'
         }
-      });
+      };
+
+      if (sha) {
+        payload.sha = sha;
+      }
+      
+      await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_config.yml`, payload);
     } catch (error) {
       throw new Error('Failed to update Jekyll configuration');
     }
+  }
+
+  private getDefaultJekyllConfig(): string {
+    return `# ----------------------------------------
+# Información básica del sitio
+# ----------------------------------------
+title: "Mi Blog"
+description: "Un blog sobre desarrollo web, software y tecnología"
+url: "https://${this.owner}.github.io"
+baseurl: ""
+
+# ----------------------------------------
+# Datos del autor
+# ----------------------------------------
+author:
+  name: "${this.owner}"
+  email: "tu@email.com"
+  github: "https://github.com/${this.owner}"
+  twitter: "@${this.owner}"
+
+# ----------------------------------------
+# Tema y apariencia
+# ----------------------------------------
+theme: minima
+permalink: /:categories/:title/
+paginate: 5
+paginate_path: "/page:num"
+
+# ----------------------------------------
+# Plugins
+# ----------------------------------------
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-paginate
+  - jekyll-archives
+  - jekyll-relative-links
+  - jekyll-include-cache
+
+# ----------------------------------------
+# Excluir del build
+# ----------------------------------------
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - README.md
+
+# ----------------------------------------
+# Configuración del feed
+# ----------------------------------------
+feed:
+  path: rss.xml
+
+# ----------------------------------------
+# SEO tags
+# ----------------------------------------
+seo:
+  type: Blog
+  twitter:
+    username: "@${this.owner}"
+    card: "summary_large_image"
+
+# ----------------------------------------
+# Datos extra para _data/*.yml
+# ----------------------------------------
+social_links:
+  - name: GitHub
+    url: https://github.com/${this.owner}
+  - name: Twitter
+    url: https://twitter.com/${this.owner}
+
+# ----------------------------------------
+# Markdown
+# ----------------------------------------
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+`;
+  }
+
+  parseJekyllConfig(content: string): Partial<JekyllConfig> {
+    const config: any = {};
+    const lines = content.split('\n');
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#') || trimmed === '') continue;
+      
+      const colonIndex = trimmed.indexOf(':');
+      if (colonIndex === -1) continue;
+      
+      const key = trimmed.substring(0, colonIndex).trim();
+      const value = trimmed.substring(colonIndex + 1).trim().replace(/^["']|["']$/g, '');
+      
+      if (key === 'title') config.title = value;
+      if (key === 'description') config.description = value;
+      if (key === 'url') config.url = value;
+      if (key === 'baseurl') config.baseurl = value;
+    }
+    
+    return config;
+  }
+
+  generateJekyllConfig(config: Partial<JekyllConfig>): string {
+    return `# ----------------------------------------
+# Información básica del sitio
+# ----------------------------------------
+title: "${config.title || 'Mi Blog'}"
+description: "${config.description || 'Un blog sobre desarrollo web, software y tecnología'}"
+url: "${config.url || `https://${this.owner}.github.io`}"
+baseurl: "${config.baseurl || ''}"
+
+# ----------------------------------------
+# Datos del autor
+# ----------------------------------------
+author:
+  name: "${config.author?.name || this.owner}"
+  email: "${config.author?.email || 'tu@email.com'}"
+  github: "${config.author?.github || `https://github.com/${this.owner}`}"
+  twitter: "${config.author?.twitter || `@${this.owner}`}"
+
+# ----------------------------------------
+# Tema y apariencia
+# ----------------------------------------
+theme: ${config.theme || 'minima'}
+permalink: ${config.permalink || '/:categories/:title/'}
+paginate: ${config.paginate || 5}
+paginate_path: "${config.paginate_path || '/page:num'}"
+
+# ----------------------------------------
+# Plugins
+# ----------------------------------------
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-paginate
+  - jekyll-archives
+  - jekyll-relative-links
+  - jekyll-include-cache
+
+# ----------------------------------------
+# Excluir del build
+# ----------------------------------------
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - README.md
+
+# ----------------------------------------
+# Configuración del feed
+# ----------------------------------------
+feed:
+  path: ${config.feed?.path || 'rss.xml'}
+
+# ----------------------------------------
+# SEO tags
+# ----------------------------------------
+seo:
+  type: ${config.seo?.type || 'Blog'}
+  twitter:
+    username: "${config.seo?.twitter?.username || `@${this.owner}`}"
+    card: "${config.seo?.twitter?.card || 'summary_large_image'}"
+
+# ----------------------------------------
+# Datos extra para _data/*.yml
+# ----------------------------------------
+social_links:
+  - name: GitHub
+    url: ${config.author?.github || `https://github.com/${this.owner}`}
+  - name: Twitter
+    url: ${config.author?.twitter?.replace('@', 'https://twitter.com/') || `https://twitter.com/${this.owner}`}
+
+# ----------------------------------------
+# Markdown
+# ----------------------------------------
+markdown: ${config.markdown || 'kramdown'}
+kramdown:
+  input: ${config.kramdown?.input || 'GFM'}
+  hard_wrap: ${config.kramdown?.hard_wrap || false}
+`;
   }
 }
 

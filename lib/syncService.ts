@@ -146,6 +146,74 @@ class SyncService {
       };
     }
   }
+
+  async syncJekyllConfig(jekyllConfig: {
+    title: string;
+    description: string;
+    url: string;
+    baseurl: string;
+    authorName: string;
+    authorEmail: string;
+    authorGithub: string;
+    authorTwitter: string;
+  }): Promise<SyncResult> {
+    try {
+      // Check if GitHub is configured
+      const config = await configService.getConfig();
+      if (!config.repoUrl || !config.token) {
+        return {
+          success: false,
+          message: 'GitHub not configured',
+          synced: 0,
+          errors: ['Please configure GitHub settings first']
+        };
+      }
+
+      // Update GitHub API config
+      githubApi.setApiConfig({
+        repoUrl: config.repoUrl,
+        token: config.token,
+      });
+
+      // Test connection
+      await githubApi.testConnection();
+
+      // Get existing Jekyll config
+      const existingConfig = await githubApi.getJekyllConfig();
+      
+      // Generate new config content
+      const configContent = githubApi.generateJekyllConfig({
+        title: jekyllConfig.title,
+        description: jekyllConfig.description,
+        url: jekyllConfig.url,
+        baseurl: jekyllConfig.baseurl,
+        author: {
+          name: jekyllConfig.authorName,
+          email: jekyllConfig.authorEmail,
+          github: jekyllConfig.authorGithub,
+          twitter: jekyllConfig.authorTwitter,
+        }
+      });
+
+      // Update Jekyll config
+      await githubApi.updateJekyllConfig(configContent, existingConfig.sha || undefined);
+
+      return {
+        success: true,
+        message: 'Jekyll configuration updated successfully',
+        synced: 1,
+        errors: []
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to update Jekyll configuration',
+        synced: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
+    }
+  }
 }
 
 export const syncService = new SyncService();

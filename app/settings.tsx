@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, Card, Switch, Divider, Menu, IconButton } from 'react-native-paper';
+import { Text, TextInput, Button, Card, Switch, Divider, Menu, IconButton, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft } from 'lucide-react-native';
+import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft, Settings as SettingsIcon } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { configService } from '@/lib/configService';
 import { githubApi } from '@/lib/githubApi';
@@ -13,6 +13,7 @@ import { useLanguage } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
 
 export default function SettingsScreen() {
+  const [activeTab, setActiveTab] = useState('github');
   const [repoUrl, setRepoUrl] = useState('');
   const [token, setToken] = useState('');
   const [username, setUsername] = useState('');
@@ -23,6 +24,18 @@ export default function SettingsScreen() {
   const [syncEnabled, setSyncEnabled] = useState(false);
   const [lastSync, setLastSync] = useState<Date | undefined>();
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
+  
+  // Jekyll configuration
+  const [jekyllTitle, setJekyllTitle] = useState('');
+  const [jekyllDescription, setJekyllDescription] = useState('');
+  const [jekyllUrl, setJekyllUrl] = useState('');
+  const [jekyllBaseurl, setJekyllBaseurl] = useState('');
+  const [jekyllAuthorName, setJekyllAuthorName] = useState('');
+  const [jekyllAuthorEmail, setJekyllAuthorEmail] = useState('');
+  const [jekyllAuthorGithub, setJekyllAuthorGithub] = useState('');
+  const [jekyllAuthorTwitter, setJekyllAuthorTwitter] = useState('');
+  const [savingJekyll, setSavingJekyll] = useState(false);
+  
   const { isDark, toggleTheme, theme } = useTheme();
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
 
@@ -40,6 +53,17 @@ export default function SettingsScreen() {
       const localSettings = await localStorageService.getSettings();
       setSyncEnabled(localSettings.syncEnabled);
       setLastSync(localSettings.lastSync);
+      
+      // Load Jekyll configuration
+      const jekyllConfig = await configService.getJekyllConfig();
+      setJekyllTitle(jekyllConfig.title);
+      setJekyllDescription(jekyllConfig.description);
+      setJekyllUrl(jekyllConfig.url);
+      setJekyllBaseurl(jekyllConfig.baseurl);
+      setJekyllAuthorName(jekyllConfig.authorName);
+      setJekyllAuthorEmail(jekyllConfig.authorEmail);
+      setJekyllAuthorGithub(jekyllConfig.authorGithub);
+      setJekyllAuthorTwitter(jekyllConfig.authorTwitter);
       
       // Test connection if config exists
       if (config.repoUrl && config.token) {
@@ -65,7 +89,7 @@ export default function SettingsScreen() {
 
   const saveSettings = async () => {
     if (!repoUrl.trim() || !token.trim()) {
-      Alert.alert(t('settings.error'), t('settings.fillRequired'));
+      Alert.alert(t('common.error'), t('settings.fillRequired'));
       return;
     }
 
@@ -90,6 +114,49 @@ export default function SettingsScreen() {
       Alert.alert(t('common.error'), t('settings.settingsFailed'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveJekyllConfig = async () => {
+    setSavingJekyll(true);
+    try {
+      // Save locally
+      await configService.saveJekyllConfig({
+        title: jekyllTitle,
+        description: jekyllDescription,
+        url: jekyllUrl,
+        baseurl: jekyllBaseurl,
+        authorName: jekyllAuthorName,
+        authorEmail: jekyllAuthorEmail,
+        authorGithub: jekyllAuthorGithub,
+        authorTwitter: jekyllAuthorTwitter,
+      });
+
+      // Sync to GitHub if connected
+      if (connectionStatus === 'success') {
+        const result = await syncService.syncJekyllConfig({
+          title: jekyllTitle,
+          description: jekyllDescription,
+          url: jekyllUrl,
+          baseurl: jekyllBaseurl,
+          authorName: jekyllAuthorName,
+          authorEmail: jekyllAuthorEmail,
+          authorGithub: jekyllAuthorGithub,
+          authorTwitter: jekyllAuthorTwitter,
+        });
+
+        if (result.success) {
+          Alert.alert(t('common.success'), 'Jekyll configuration saved and synced to GitHub!');
+        } else {
+          Alert.alert(t('common.success'), 'Jekyll configuration saved locally. Sync to GitHub failed: ' + result.errors.join(', '));
+        }
+      } else {
+        Alert.alert(t('common.success'), 'Jekyll configuration saved locally!');
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), 'Failed to save Jekyll configuration');
+    } finally {
+      setSavingJekyll(false);
     }
   };
 
@@ -301,7 +368,363 @@ export default function SettingsScreen() {
       color: theme.colors.onSurfaceVariant,
       fontStyle: 'italic',
     },
+    segmentedButtons: {
+      marginHorizontal: 16,
+      marginBottom: 16,
+    },
   });
+
+  const renderGitHubSettings = () => (
+    <>
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <Cloud size={24} color="#3b82f6" />
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              {t('settings.sync')}
+            </Text>
+          </View>
+          
+          <Text variant="bodyMedium" style={dynamicStyles.helpText}>
+            {t('settings.syncDescription')}
+          </Text>
+
+          {connectionStatus === 'success' && (
+            <View style={styles.syncActions}>
+              <Button
+                mode="contained"
+                onPress={syncToGitHub}
+                loading={syncing}
+                disabled={syncing}
+                style={styles.syncButton}
+                icon={() => <Upload size={16} color="#ffffff" />}
+              >
+                {t('settings.syncToGitHub')}
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={syncFromGitHub}
+                loading={syncing}
+                disabled={syncing}
+                style={styles.syncButton}
+                icon={() => <Download size={16} color="#3b82f6" />}
+              >
+                {t('settings.importFromGitHub')}
+              </Button>
+            </View>
+          )}
+
+          {lastSync && (
+            <Text variant="bodySmall" style={styles.lastSyncText}>
+              {t('settings.lastSync', { date: lastSync.toLocaleString() })}
+            </Text>
+          )}
+        </Card.Content>
+      </Card>
+
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <Github size={24} color="#3b82f6" />
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              {t('settings.githubConfig')}
+            </Text>
+            {connectionStatus !== 'idle' && (
+              <View style={styles.connectionStatus}>
+                {getConnectionStatusIcon()}
+                <Text style={[
+                  styles.connectionStatusText,
+                  { color: connectionStatus === 'success' ? '#10b981' : '#dc2626' }
+                ]}>
+                  {getConnectionStatusText()}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <TextInput
+            label={t('settings.repoUrl')}
+            value={repoUrl}
+            onChangeText={setRepoUrl}
+            mode="outlined"
+            style={styles.input}
+            placeholder={t('settings.repoUrlPlaceholder')}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TextInput
+            label={t('settings.token')}
+            value={token}
+            onChangeText={setToken}
+            mode="outlined"
+            style={styles.input}
+            placeholder={t('settings.tokenPlaceholder')}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TextInput
+            label={t('settings.username')}
+            value={username}
+            onChangeText={setUsername}
+            mode="outlined"
+            style={styles.input}
+            placeholder={t('settings.usernamePlaceholder')}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          {repoInfo && (
+            <View style={dynamicStyles.repoInfo}>
+              <Text variant="bodyMedium" style={dynamicStyles.repoInfoText}>
+                {t('settings.owner')}: <Text style={styles.repoInfoValue}>{repoInfo.owner}</Text>
+              </Text>
+              <Text variant="bodyMedium" style={dynamicStyles.repoInfoText}>
+                {t('settings.repository')}: <Text style={styles.repoInfoValue}>{repoInfo.repo}</Text>
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.buttonRow}>
+            <Button
+              mode="outlined"
+              onPress={testConnection}
+              loading={testing}
+              disabled={testing || !repoUrl.trim() || !token.trim()}
+              style={styles.testButton}
+              icon="check-circle"
+            >
+              {t('settings.testConnection')}
+            </Button>
+            <Button
+              mode="contained"
+              onPress={saveSettings}
+              loading={saving}
+              disabled={saving || !repoUrl.trim() || !token.trim()}
+              style={styles.saveButton}
+            >
+              {t('settings.saveSettings')}
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    </>
+  );
+
+  const renderJekyllSettings = () => (
+    <>
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <SettingsIcon size={24} color="#3b82f6" />
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              Configuración del Sitio Jekyll
+            </Text>
+          </View>
+          
+          <Text variant="bodyMedium" style={dynamicStyles.helpText}>
+            Configura los datos básicos de tu sitio Jekyll que se sincronizarán con el archivo _config.yml
+          </Text>
+
+          <TextInput
+            label="Título del Sitio"
+            value={jekyllTitle}
+            onChangeText={setJekyllTitle}
+            mode="outlined"
+            style={styles.input}
+            placeholder="Mi Blog Técnico"
+          />
+
+          <TextInput
+            label="Descripción"
+            value={jekyllDescription}
+            onChangeText={setJekyllDescription}
+            mode="outlined"
+            style={styles.input}
+            placeholder="Un blog sobre desarrollo web, software y tecnología"
+            multiline
+            numberOfLines={3}
+          />
+
+          <TextInput
+            label="URL del Sitio"
+            value={jekyllUrl}
+            onChangeText={setJekyllUrl}
+            mode="outlined"
+            style={styles.input}
+            placeholder="https://tuusuario.github.io"
+            autoCapitalize="none"
+          />
+
+          <TextInput
+            label="Base URL (opcional)"
+            value={jekyllBaseurl}
+            onChangeText={setJekyllBaseurl}
+            mode="outlined"
+            style={styles.input}
+            placeholder="/blog (deja vacío si está en la raíz)"
+            autoCapitalize="none"
+          />
+        </Card.Content>
+      </Card>
+
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <User size={24} color="#3b82f6" />
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              Información del Autor
+            </Text>
+          </View>
+
+          <TextInput
+            label="Nombre"
+            value={jekyllAuthorName}
+            onChangeText={setJekyllAuthorName}
+            mode="outlined"
+            style={styles.input}
+            placeholder="Tu Nombre"
+          />
+
+          <TextInput
+            label="Email"
+            value={jekyllAuthorEmail}
+            onChangeText={setJekyllAuthorEmail}
+            mode="outlined"
+            style={styles.input}
+            placeholder="tu@email.com"
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <TextInput
+            label="GitHub URL"
+            value={jekyllAuthorGithub}
+            onChangeText={setJekyllAuthorGithub}
+            mode="outlined"
+            style={styles.input}
+            placeholder="https://github.com/tuusuario"
+            autoCapitalize="none"
+          />
+
+          <TextInput
+            label="Twitter"
+            value={jekyllAuthorTwitter}
+            onChangeText={setJekyllAuthorTwitter}
+            mode="outlined"
+            style={styles.input}
+            placeholder="@tuusuario"
+            autoCapitalize="none"
+          />
+
+          <Button
+            mode="contained"
+            onPress={saveJekyllConfig}
+            loading={savingJekyll}
+            disabled={savingJekyll}
+            style={styles.saveButton}
+          >
+            Guardar Configuración Jekyll
+          </Button>
+        </Card.Content>
+      </Card>
+    </>
+  );
+
+  const renderGeneralSettings = () => (
+    <>
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            {isDark ? <Moon size={24} color="#3b82f6" /> : <Sun size={24} color="#3b82f6" />}
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              {t('settings.appearance')}
+            </Text>
+          </View>
+          <View style={styles.themeRow}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+              {t('settings.darkMode')}
+            </Text>
+            <Switch value={isDark} onValueChange={toggleTheme} />
+          </View>
+          <Divider style={styles.divider} />
+          <View style={styles.languageRow}>
+            <Globe size={20} color={theme.colors.onSurface} />
+            <Text variant="bodyMedium" style={[styles.languageLabel, { color: theme.colors.onSurface }]}>
+              {t('settings.language')}
+            </Text>
+            <Menu
+              visible={languageMenuVisible}
+              onDismiss={() => setLanguageMenuVisible(false)}
+              anchor={
+                <Button
+                  mode="outlined"
+                  onPress={() => setLanguageMenuVisible(true)}
+                  style={styles.languageButton}
+                >
+                  {getCurrentLanguageName()}
+                </Button>
+              }
+            >
+              {availableLanguages.map((language) => (
+                <Menu.Item
+                  key={language.code}
+                  onPress={() => {
+                    changeLanguage(language.code);
+                    setLanguageMenuVisible(false);
+                  }}
+                  title={language.name}
+                />
+              ))}
+            </Menu>
+          </View>
+        </Card.Content>
+      </Card>
+
+      <Card style={styles.dangerCard}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <Trash2 size={24} color="#dc2626" />
+            <Text variant="titleMedium" style={[dynamicStyles.sectionTitle, { color: '#dc2626' }]}>
+              {t('settings.dangerZone')}
+            </Text>
+          </View>
+          
+          <Text variant="bodyMedium" style={dynamicStyles.helpText}>
+            {t('settings.dangerDescription')}
+          </Text>
+          
+          <Button
+            mode="outlined"
+            onPress={clearAllData}
+            style={styles.dangerButton}
+            textColor="#dc2626"
+          >
+            {t('settings.clearAll')}
+          </Button>
+        </Card.Content>
+      </Card>
+
+      <Card style={dynamicStyles.card}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <User size={24} color="#3b82f6" />
+            <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+              {t('settings.about')}
+            </Text>
+          </View>
+          <Text variant="bodyMedium" style={dynamicStyles.aboutText}>
+            {t('settings.aboutDescription')}
+          </Text>
+          <Text variant="bodySmall" style={dynamicStyles.versionText}>
+            {t('settings.version')}
+          </Text>
+        </Card.Content>
+      </Card>
+    </>
+  );
 
   return (
     <SafeAreaView style={dynamicStyles.container}>
@@ -321,275 +744,21 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      <SegmentedButtons
+        value={activeTab}
+        onValueChange={setActiveTab}
+        buttons={[
+          { value: 'github', label: 'GitHub' },
+          { value: 'jekyll', label: 'Jekyll' },
+          { value: 'general', label: 'General' },
+        ]}
+        style={dynamicStyles.segmentedButtons}
+      />
+
       <ScrollView style={styles.content}>
-        <Card style={dynamicStyles.card}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <Cloud size={24} color="#3b82f6" />
-              <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
-                {t('settings.sync')}
-              </Text>
-            </View>
-            
-            <Text variant="bodyMedium" style={dynamicStyles.helpText}>
-              {t('settings.syncDescription')}
-            </Text>
-
-            {connectionStatus === 'success' && (
-              <View style={styles.syncActions}>
-                <Button
-                  mode="contained"
-                  onPress={syncToGitHub}
-                  loading={syncing}
-                  disabled={syncing}
-                  style={styles.syncButton}
-                  icon={() => <Upload size={16} color="#ffffff" />}
-                >
-                  {t('settings.syncToGitHub')}
-                </Button>
-                <Button
-                  mode="outlined"
-                  onPress={syncFromGitHub}
-                  loading={syncing}
-                  disabled={syncing}
-                  style={styles.syncButton}
-                  icon={() => <Download size={16} color="#3b82f6" />}
-                >
-                  {t('settings.importFromGitHub')}
-                </Button>
-              </View>
-            )}
-
-            {lastSync && (
-              <Text variant="bodySmall" style={styles.lastSyncText}>
-                {t('settings.lastSync', { date: lastSync.toLocaleString() })}
-              </Text>
-            )}
-          </Card.Content>
-        </Card>
-
-        <Card style={dynamicStyles.card}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <Github size={24} color="#3b82f6" />
-              <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
-                {t('settings.githubConfig')}
-              </Text>
-              {connectionStatus !== 'idle' && (
-                <View style={styles.connectionStatus}>
-                  {getConnectionStatusIcon()}
-                  <Text style={[
-                    styles.connectionStatusText,
-                    { color: connectionStatus === 'success' ? '#10b981' : '#dc2626' }
-                  ]}>
-                    {getConnectionStatusText()}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <TextInput
-              label={t('settings.repoUrl')}
-              value={repoUrl}
-              onChangeText={setRepoUrl}
-              mode="outlined"
-              style={styles.input}
-              placeholder={t('settings.repoUrlPlaceholder')}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <TextInput
-              label={t('settings.token')}
-              value={token}
-              onChangeText={setToken}
-              mode="outlined"
-              style={styles.input}
-              placeholder={t('settings.tokenPlaceholder')}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <TextInput
-              label={t('settings.username')}
-              value={username}
-              onChangeText={setUsername}
-              mode="outlined"
-              style={styles.input}
-              placeholder={t('settings.usernamePlaceholder')}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            {repoInfo && (
-              <View style={dynamicStyles.repoInfo}>
-                <Text variant="bodyMedium" style={dynamicStyles.repoInfoText}>
-                  {t('settings.owner')}: <Text style={styles.repoInfoValue}>{repoInfo.owner}</Text>
-                </Text>
-                <Text variant="bodyMedium" style={dynamicStyles.repoInfoText}>
-                  {t('settings.repository')}: <Text style={styles.repoInfoValue}>{repoInfo.repo}</Text>
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.buttonRow}>
-              <Button
-                mode="outlined"
-                onPress={testConnection}
-                loading={testing}
-                disabled={testing || !repoUrl.trim() || !token.trim()}
-                style={styles.testButton}
-                icon="check-circle"
-              >
-                {t('settings.testConnection')}
-              </Button>
-              <Button
-                mode="contained"
-                onPress={saveSettings}
-                loading={saving}
-                disabled={saving || !repoUrl.trim() || !token.trim()}
-                style={styles.saveButton}
-              >
-                {t('settings.saveSettings')}
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
-
-        <Card style={dynamicStyles.card}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              {isDark ? <Moon size={24} color="#3b82f6" /> : <Sun size={24} color="#3b82f6" />}
-              <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
-                {t('settings.appearance')}
-              </Text>
-            </View>
-            <View style={styles.themeRow}>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
-                {t('settings.darkMode')}
-              </Text>
-              <Switch value={isDark} onValueChange={toggleTheme} />
-            </View>
-            <Divider style={styles.divider} />
-            <View style={styles.languageRow}>
-              <Globe size={20} color={theme.colors.onSurface} />
-              <Text variant="bodyMedium" style={[styles.languageLabel, { color: theme.colors.onSurface }]}>
-                {t('settings.language')}
-              </Text>
-              <Menu
-                visible={languageMenuVisible}
-                onDismiss={() => setLanguageMenuVisible(false)}
-                anchor={
-                  <Button
-                    mode="outlined"
-                    onPress={() => setLanguageMenuVisible(true)}
-                    style={styles.languageButton}
-                  >
-                    {getCurrentLanguageName()}
-                  </Button>
-                }
-              >
-                {availableLanguages.map((language) => (
-                  <Menu.Item
-                    key={language.code}
-                    onPress={() => {
-                      changeLanguage(language.code);
-                      setLanguageMenuVisible(false);
-                    }}
-                    title={language.name}
-                  />
-                ))}
-              </Menu>
-            </View>
-          </Card.Content>
-        </Card>
-
-        <Card style={dynamicStyles.card}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <ExternalLink size={24} color="#3b82f6" />
-              <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
-                {t('settings.setupInstructions')}
-              </Text>
-            </View>
-            
-            <Text variant="bodyMedium" style={dynamicStyles.helpText}>
-              {t('settings.setupDescription')}
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.setupItem1')}
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.setupItem2')}
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.setupItem3')}
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.setupItem4')}
-            </Text>
-            
-            <Divider style={styles.divider} />
-            
-            <Text variant="bodyMedium" style={dynamicStyles.helpText}>
-              <Text style={styles.boldText}>{t('settings.tokenInstructions')}</Text>
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.tokenStep1')}
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.tokenStep2')}
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.tokenStep3')}
-            </Text>
-            <Text variant="bodyMedium" style={dynamicStyles.bulletPoint}>
-              {t('settings.tokenStep4')}
-            </Text>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.dangerCard}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <Trash2 size={24} color="#dc2626" />
-              <Text variant="titleMedium" style={[dynamicStyles.sectionTitle, { color: '#dc2626' }]}>
-                {t('settings.dangerZone')}
-              </Text>
-            </View>
-            
-            <Text variant="bodyMedium" style={dynamicStyles.helpText}>
-              {t('settings.dangerDescription')}
-            </Text>
-            
-            <Button
-              mode="outlined"
-              onPress={clearAllData}
-              style={styles.dangerButton}
-              textColor="#dc2626"
-            >
-              {t('settings.clearAll')}
-            </Button>
-          </Card.Content>
-        </Card>
-
-        <Card style={dynamicStyles.card}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <User size={24} color="#3b82f6" />
-              <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
-                {t('settings.about')}
-              </Text>
-            </View>
-            <Text variant="bodyMedium" style={dynamicStyles.aboutText}>
-              {t('settings.aboutDescription')}
-            </Text>
-            <Text variant="bodySmall" style={dynamicStyles.versionText}>
-              {t('settings.version')}
-            </Text>
-          </Card.Content>
-        </Card>
+        {activeTab === 'github' && renderGitHubSettings()}
+        {activeTab === 'jekyll' && renderJekyllSettings()}
+        {activeTab === 'general' && renderGeneralSettings()}
       </ScrollView>
     </SafeAreaView>
   );
