@@ -314,6 +314,79 @@ class GitHubApiService {
     }
   }
 
+  async getIndexPage(): Promise<GitHubFile> {
+    try {
+      const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/index.md`);
+      
+      return {
+        name: response.data.name,
+        content: decode(response.data.content),
+        sha: response.data.sha,
+        path: response.data.path,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // If index.md doesn't exist, return a default homepage
+        return {
+          name: 'index.md',
+          content: this.getDefaultIndexPage(),
+          sha: '',
+          path: 'index.md',
+        };
+      }
+      throw new Error('Failed to fetch homepage');
+    }
+  }
+
+  async updateIndexPage(content: string, sha?: string): Promise<void> {
+    try {
+      // Ensure content is properly encoded as UTF-8
+      const cleanContent = this.sanitizeYamlContent(content);
+      const encodedContent = encode(cleanContent);
+      
+      const payload: any = {
+        message: 'Update homepage (index.md)',
+        content: encodedContent,
+        committer: {
+          name: 'GitBlog',
+          email: 'gitblog@example.com'
+        }
+      };
+
+      if (sha) {
+        payload.sha = sha;
+      }
+      
+      await this.api.put(`/repos/${this.owner}/${this.repo}/contents/index.md`, payload);
+    } catch (error) {
+      throw new Error('Failed to update homepage');
+    }
+  }
+
+  private getDefaultIndexPage(): string {
+    return `---
+layout: home
+title: "Inicio"
+---
+
+# Bienvenido a mi blog
+
+Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnología y otros temas que me interesan.
+
+## Últimas publicaciones
+
+Aquí encontrarás mis artículos más recientes. Explora las diferentes categorías y no dudes en dejar tus comentarios.
+
+## Sobre mí
+
+Soy un desarrollador apasionado por la tecnología y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
+
+---
+
+*¡Gracias por visitar mi blog!*
+`;
+  }
+
   async getJekyllConfig(): Promise<GitHubFile> {
     try {
       const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_config.yml`);

@@ -20,8 +20,13 @@ interface JekyllSiteConfig {
   plugins: string[];
 }
 
+interface HomepageConfig {
+  content: string;
+}
+
 const STORAGE_KEY = 'gitblog_config';
 const JEKYLL_CONFIG_KEY = 'gitblog_jekyll_config';
+const HOMEPAGE_CONFIG_KEY = 'gitblog_homepage_config';
 
 class ConfigService {
   async saveConfig(config: AppConfig): Promise<void> {
@@ -67,9 +72,11 @@ class ConfigService {
       if (Platform.OS === 'web') {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(JEKYLL_CONFIG_KEY);
+        localStorage.removeItem(HOMEPAGE_CONFIG_KEY);
       } else {
         await SecureStore.deleteItemAsync(STORAGE_KEY);
         await SecureStore.deleteItemAsync(JEKYLL_CONFIG_KEY);
+        await SecureStore.deleteItemAsync(HOMEPAGE_CONFIG_KEY);
       }
     } catch (error) {
       throw new Error('Failed to clear configuration');
@@ -126,6 +133,80 @@ class ConfigService {
         authorTwitter: '',
         theme: 'minima',
         plugins: ['jekyll-feed', 'jekyll-seo-tag', 'jekyll-sitemap'],
+      };
+    }
+  }
+
+  async saveHomepageConfig(config: HomepageConfig): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        localStorage.setItem(HOMEPAGE_CONFIG_KEY, JSON.stringify(config));
+      } else {
+        await SecureStore.setItemAsync(HOMEPAGE_CONFIG_KEY, JSON.stringify(config));
+      }
+    } catch (error) {
+      throw new Error('Failed to save homepage configuration');
+    }
+  }
+
+  async getHomepageConfig(): Promise<HomepageConfig> {
+    try {
+      let configStr: string | null = null;
+      
+      if (Platform.OS === 'web') {
+        configStr = localStorage.getItem(HOMEPAGE_CONFIG_KEY);
+      } else {
+        configStr = await SecureStore.getItemAsync(HOMEPAGE_CONFIG_KEY);
+      }
+
+      if (!configStr) {
+        return {
+          content: `---
+layout: home
+title: "Inicio"
+---
+
+# Bienvenido a mi blog
+
+Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnología y otros temas que me interesan.
+
+## Últimas publicaciones
+
+Aquí encontrarás mis artículos más recientes. Explora las diferentes categorías y no dudes en dejar tus comentarios.
+
+## Sobre mí
+
+Soy un desarrollador apasionado por la tecnología y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
+
+---
+
+*¡Gracias por visitar mi blog!*`
+        };
+      }
+
+      return JSON.parse(configStr);
+    } catch (error) {
+      return {
+        content: `---
+layout: home
+title: "Inicio"
+---
+
+# Bienvenido a mi blog
+
+Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnología y otros temas que me interesan.
+
+## Últimas publicaciones
+
+Aquí encontrarás mis artículos más recientes. Explora las diferentes categorías y no dudes en dejar tus comentarios.
+
+## Sobre mí
+
+Soy un desarrollador apasionado por la tecnología y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
+
+---
+
+*¡Gracias por visitar mi blog!*`
       };
     }
   }

@@ -137,7 +137,20 @@ class SyncService {
         errors.push(`Jekyll config sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 2: Sync all posts
+      // Step 2: Sync homepage (index.md)
+      try {
+        const homepageConfig = await configService.getHomepageConfig();
+        const result = await this.syncHomepage(homepageConfig.content);
+        if (!result.success) {
+          errors.push('Failed to sync homepage');
+        } else {
+          synced++;
+        }
+      } catch (error) {
+        errors.push(`Homepage sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Step 3: Sync all posts
       const localPosts = await localStorageService.getPosts();
       
       for (const post of localPosts) {
@@ -165,7 +178,7 @@ class SyncService {
         }
       }
 
-      // Step 3: Enable GitHub Pages if not already enabled
+      // Step 4: Enable GitHub Pages if not already enabled
       let pagesUrl = '';
       try {
         const pagesResult = await githubApi.enableGitHubPages();
@@ -174,7 +187,7 @@ class SyncService {
         errors.push(`Failed to enable GitHub Pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 4: Trigger a new build
+      // Step 5: Trigger a new build
       try {
         await githubApi.triggerPagesBuild();
       } catch (error) {
@@ -311,6 +324,51 @@ class SyncService {
       return {
         success: false,
         message: 'Failed to update Jekyll configuration',
+        synced: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
+    }
+  }
+
+  async syncHomepage(content: string): Promise<SyncResult> {
+    try {
+      // Check if GitHub is configured
+      const config = await configService.getConfig();
+      if (!config.repoUrl || !config.token) {
+        return {
+          success: false,
+          message: 'GitHub not configured',
+          synced: 0,
+          errors: ['Please configure GitHub settings first']
+        };
+      }
+
+      // Update GitHub API config
+      githubApi.setApiConfig({
+        repoUrl: config.repoUrl,
+        token: config.token,
+      });
+
+      // Test connection
+      await githubApi.testConnection();
+
+      // Get existing homepage
+      const existingHomepage = await githubApi.getIndexPage();
+      
+      // Update homepage
+      await githubApi.updateIndexPage(content, existingHomepage.sha || undefined);
+
+      return {
+        success: true,
+        message: 'Homepage updated successfully',
+        synced: 1,
+        errors: []
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to update homepage',
         synced: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error']
       };

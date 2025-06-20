@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, Switch, Divider, Menu, IconButton, SegmentedButtons, RadioButton, Checkbox } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft, Settings as SettingsIcon, Palette, Puzzle } from 'lucide-react-native';
+import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft, Settings as SettingsIcon, Palette, Puzzle, Home } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { configService } from '@/lib/configService';
 import { githubApi } from '@/lib/githubApi';
 import { syncService } from '@/lib/syncService';
 import { localStorageService } from '@/lib/localStorageService';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLanguage } from '@/components/LanguageProvider';
 import { t } from '@/lib/i18n';
@@ -37,6 +38,10 @@ export default function SettingsScreen() {
   const [jekyllTheme, setJekyllTheme] = useState('minima');
   const [jekyllPlugins, setJekyllPlugins] = useState<string[]>(['jekyll-feed', 'jekyll-seo-tag', 'jekyll-sitemap']);
   const [savingJekyll, setSavingJekyll] = useState(false);
+  
+  // Homepage configuration
+  const [homepageContent, setHomepageContent] = useState('');
+  const [savingHomepage, setSavingHomepage] = useState(false);
   
   const { isDark, toggleTheme, theme } = useTheme();
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
@@ -71,6 +76,10 @@ export default function SettingsScreen() {
       setJekyllAuthorTwitter(jekyllConfig.authorTwitter);
       setJekyllTheme(jekyllConfig.theme);
       setJekyllPlugins(jekyllConfig.plugins);
+      
+      // Load homepage configuration
+      const homepageConfig = await configService.getHomepageConfig();
+      setHomepageContent(homepageConfig.content);
       
       // Test connection if config exists
       if (config.repoUrl && config.token) {
@@ -168,6 +177,33 @@ export default function SettingsScreen() {
       Alert.alert(t('common.error'), 'Failed to save Jekyll configuration');
     } finally {
       setSavingJekyll(false);
+    }
+  };
+
+  const saveHomepageConfig = async () => {
+    setSavingHomepage(true);
+    try {
+      // Save locally
+      await configService.saveHomepageConfig({
+        content: homepageContent,
+      });
+
+      // Sync to GitHub if connected
+      if (connectionStatus === 'success') {
+        const result = await syncService.syncHomepage(homepageContent);
+
+        if (result.success) {
+          Alert.alert(t('common.success'), 'Homepage saved and synced to GitHub!');
+        } else {
+          Alert.alert(t('common.success'), 'Homepage saved locally. Sync to GitHub failed: ' + result.errors.join(', '));
+        }
+      } else {
+        Alert.alert(t('common.success'), 'Homepage saved locally!');
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), 'Failed to save homepage');
+    } finally {
+      setSavingHomepage(false);
     }
   };
 
@@ -758,6 +794,41 @@ export default function SettingsScreen() {
     </>
   );
 
+  const renderHomepageSettings = () => (
+    <Card style={dynamicStyles.card}>
+      <Card.Content>
+        <View style={styles.sectionHeader}>
+          <Home size={24} color="#3b82f6" />
+          <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
+            Página Principal (index.md)
+          </Text>
+        </View>
+        
+        <Text variant="bodyMedium" style={dynamicStyles.helpText}>
+          Edita el contenido de la página principal de tu sitio Jekyll. Este archivo se guardará como index.md en la raíz de tu repositorio.
+        </Text>
+
+        <MarkdownEditor
+          value={homepageContent}
+          onChangeText={setHomepageContent}
+          placeholder="Escribe el contenido de tu página principal..."
+          title="Página Principal"
+          date={new Date()}
+        />
+
+        <Button
+          mode="contained"
+          onPress={saveHomepageConfig}
+          loading={savingHomepage}
+          disabled={savingHomepage}
+          style={styles.saveButton}
+        >
+          Guardar Página Principal
+        </Button>
+      </Card.Content>
+    </Card>
+  );
+
   const renderGeneralSettings = () => (
     <>
       <Card style={dynamicStyles.card}>
@@ -875,6 +946,7 @@ export default function SettingsScreen() {
         buttons={[
           { value: 'github', label: 'GitHub' },
           { value: 'jekyll', label: 'Jekyll' },
+          { value: 'homepage', label: 'Página Principal' },
           { value: 'general', label: 'General' },
         ]}
         style={dynamicStyles.segmentedButtons}
@@ -883,6 +955,7 @@ export default function SettingsScreen() {
       <ScrollView style={styles.content}>
         {activeTab === 'github' && renderGitHubSettings()}
         {activeTab === 'jekyll' && renderJekyllSettings()}
+        {activeTab === 'homepage' && renderHomepageSettings()}
         {activeTab === 'general' && renderGeneralSettings()}
       </ScrollView>
     </SafeAreaView>
