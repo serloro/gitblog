@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, Switch, Divider, Menu, IconButton, SegmentedButtons, RadioButton, Checkbox } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft, Settings as SettingsIcon, Palette, Puzzle, Home } from 'lucide-react-native';
+import { Github, ExternalLink, User, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Cloud, Download, Upload, Trash2, Moon, Sun, Globe, ArrowLeft, Settings as SettingsIcon, Palette, Puzzle, Chrome as Home } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { configService } from '@/lib/configService';
 import { githubApi } from '@/lib/githubApi';
