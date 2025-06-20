@@ -171,7 +171,8 @@ class GitHubApiService {
 
   async createPost(filename: string, content: string): Promise<void> {
     try {
-      const encodedContent = encode(content);
+      const cleanContent = this.sanitizeContent(content);
+      const encodedContent = encode(cleanContent);
       
       await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
         message: `Create post: ${filename}`,
@@ -193,7 +194,8 @@ class GitHubApiService {
 
   async updatePost(filename: string, content: string, sha: string): Promise<void> {
     try {
-      const encodedContent = encode(content);
+      const cleanContent = this.sanitizeContent(content);
+      const encodedContent = encode(cleanContent);
       
       await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_posts/${filename}`, {
         message: `Update post: ${filename}`,
@@ -340,8 +342,7 @@ class GitHubApiService {
 
   async updateIndexPage(content: string, sha?: string): Promise<void> {
     try {
-      // Ensure content is properly encoded as UTF-8
-      const cleanContent = this.sanitizeYamlContent(content);
+      const cleanContent = this.sanitizeContent(content);
       const encodedContent = encode(cleanContent);
       
       const payload: any = {
@@ -390,7 +391,7 @@ class GitHubApiService {
   async updateReadme(sha?: string): Promise<void> {
     try {
       const readmeContent = this.getDefaultReadme();
-      const cleanContent = this.sanitizeYamlContent(readmeContent);
+      const cleanContent = this.sanitizeContent(readmeContent);
       const encodedContent = encode(cleanContent);
       
       const payload: any = {
@@ -412,6 +413,43 @@ class GitHubApiService {
     }
   }
 
+  private sanitizeContent(content: string): string {
+    if (!content) return '';
+    
+    // Remove BOM (Byte Order Mark) characters
+    content = content.replace(/^\uFEFF/, '');
+    
+    // Normalize line endings to Unix style
+    content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    // Remove null characters and other problematic control characters
+    content = content.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    
+    // Remove any non-printable Unicode characters that might cause issues
+    content = content.replace(/[\uFFF0-\uFFFF]/g, '');
+    
+    // Ensure proper UTF-8 encoding by removing any invalid sequences
+    try {
+      // Test if the string can be properly encoded/decoded
+      const testEncoded = encode(content);
+      const testDecoded = decode(testEncoded);
+      if (testDecoded !== content) {
+        // If there's a mismatch, clean the content more aggressively
+        content = content.replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, '');
+      }
+    } catch (error) {
+      // If encoding fails, remove all non-ASCII characters except common ones
+      content = content.replace(/[^\x20-\x7E\u00A0-\u024F\u1E00-\u1EFF]/g, '');
+    }
+    
+    // Ensure the content ends with a newline
+    if (!content.endsWith('\n')) {
+      content += '\n';
+    }
+    
+    return content;
+  }
+
   private getDefaultIndexPage(): string {
     return `---
 layout: home
@@ -420,87 +458,79 @@ title: "Inicio"
 
 # Bienvenido a mi blog
 
-Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnología y otros temas que me interesan.
+Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnologia y otros temas que me interesan.
 
-## Últimas publicaciones
+## Ultimas publicaciones
 
-Aquí encontrarás mis artículos más recientes. Explora las diferentes categorías y no dudes en dejar tus comentarios.
+Aqui encontraras mis articulos mas recientes. Explora las diferentes categorias y no dudes en dejar tus comentarios.
 
-## Sobre mí
+## Sobre mi
 
-Soy un desarrollador apasionado por la tecnología y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
+Soy un desarrollador apasionado por la tecnologia y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
 
 ---
 
-*¡Gracias por visitar mi blog!*
+*Gracias por visitar mi blog!*
 `;
   }
 
   private getDefaultReadme(): string {
     const currentDate = new Date().toLocaleDateString('es-ES');
     
-    return `# 📝 Mi Blog Personal
+    return `# Mi Blog Personal
 
-¡Bienvenido a mi blog personal! Este sitio web ha sido creado y gestionado utilizando **GitBlog**, una herramienta moderna y elegante para la creación de blogs.
+Bienvenido a mi blog personal! Este sitio web ha sido creado y gestionado utilizando **GitBlog**, una herramienta moderna y elegante para la creacion de blogs.
 
-## 🚀 Acerca de este blog
+## Acerca de este blog
 
-Este blog está construido con:
-- **Jekyll** - Generador de sitios estáticos
+Este blog esta construido con:
+- **Jekyll** - Generador de sitios estaticos
 - **GitHub Pages** - Hosting gratuito y confiable
-- **GitBlog** - Editor de blog móvil y web
+- **GitBlog** - Editor de blog movil y web
 
-## 🛠️ Creado con GitBlog
+## Creado con GitBlog
 
-Este blog ha sido desarrollado utilizando [**GitBlog**](https://bolt.new), una herramienta innovadora creada por **Sergio López** que permite:
+Este blog ha sido desarrollado utilizando [**GitBlog**](https://bolt.new), una herramienta innovadora creada por **Sergio Lopez** que permite:
 
-✨ **Características principales:**
-- 📱 Editor móvil y web intuitivo
-- 🔄 Sincronización automática con GitHub
-- 🎨 Múltiples temas de Jekyll
-- 📝 Editor Markdown con vista previa
-- 🏷️ Sistema de etiquetas
-- 🌐 Publicación automática en GitHub Pages
-- 🔧 Configuración Jekyll integrada
+**Caracteristicas principales:**
+- Editor movil y web intuitivo
+- Sincronizacion automatica con GitHub
+- Multiples temas de Jekyll
+- Editor Markdown con vista previa
+- Sistema de etiquetas
+- Publicacion automatica en GitHub Pages
+- Configuracion Jekyll integrada
 
-### 🎯 ¿Por qué GitBlog?
+### Por que GitBlog?
 
-GitBlog simplifica el proceso de creación y mantenimiento de blogs técnicos, permitiendo a los desarrolladores enfocarse en escribir contenido de calidad sin preocuparse por la configuración técnica.
+GitBlog simplifica el proceso de creacion y mantenimiento de blogs tecnicos, permitiendo a los desarrolladores enfocarse en escribir contenido de calidad sin preocuparse por la configuracion tecnica.
 
-## 🔗 Enlaces útiles
+## Enlaces utiles
 
-- 🌐 **Sitio web:** [Ver blog en vivo](https://${this.owner}.github.io)
-- 📂 **Repositorio:** [GitHub](https://github.com/${this.owner}/${this.repo})
-- 🛠️ **Herramienta:** [GitBlog en Bolt.new](https://bolt.new)
+- **Sitio web:** [Ver blog en vivo](https://${this.owner}.github.io)
+- **Repositorio:** [GitHub](https://github.com/${this.owner}/${this.repo})
+- **Herramienta:** [GitBlog en Bolt.new](https://bolt.new)
 
-## 📊 Información técnica
+## Informacion tecnica
 
 - **Generado:** ${currentDate}
 - **Herramienta:** GitBlog v1.0.0
-- **Creador de GitBlog:** Sergio López
+- **Creador de GitBlog:** Sergio Lopez
 - **Plataforma:** Bolt.new
 - **Hosting:** GitHub Pages
 - **Framework:** Jekyll
 
 ---
 
-> *"La mejor manera de aprender es enseñando y compartiendo conocimiento."*
+> *"La mejor manera de aprender es ensenando y compartiendo conocimiento."*
 
-**¡Gracias por visitar mi blog!** 🙏
+**Gracias por visitar mi blog!**
 
 ---
 
-<div align="center">
-  <p>
-    <strong>Creado con ❤️ usando</strong><br>
-    <a href="https://bolt.new">
-      <img src="https://img.shields.io/badge/GitBlog-Sergio%20López-blue?style=for-the-badge&logo=github" alt="GitBlog by Sergio López">
-    </a>
-  </p>
-  <p>
-    <a href="https://bolt.new">🚀 Crea tu blog con GitBlog</a>
-  </p>
-</div>
+**Creado con GitBlog por Sergio Lopez**
+
+[Crea tu blog con GitBlog](https://bolt.new)
 `;
   }
 
@@ -530,8 +560,7 @@ GitBlog simplifica el proceso de creación y mantenimiento de blogs técnicos, p
 
   async updateJekyllConfig(content: string, sha?: string): Promise<void> {
     try {
-      // Ensure content is properly encoded as UTF-8
-      const cleanContent = this.sanitizeYamlContent(content);
+      const cleanContent = this.sanitizeContent(content);
       const encodedContent = encode(cleanContent);
       
       const payload: any = {
@@ -551,24 +580,6 @@ GitBlog simplifica el proceso de creación y mantenimiento de blogs técnicos, p
     } catch (error) {
       throw new Error('Failed to update Jekyll configuration');
     }
-  }
-
-  private sanitizeYamlContent(content: string): string {
-    // Remove any BOM (Byte Order Mark) characters
-    content = content.replace(/^\uFEFF/, '');
-    
-    // Ensure proper line endings (Unix style)
-    content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    
-    // Remove any null characters or other problematic characters
-    content = content.replace(/\0/g, '');
-    
-    // Ensure the content ends with a newline
-    if (!content.endsWith('\n')) {
-      content += '\n';
-    }
-    
-    return content;
   }
 
   private getDefaultJekyllConfig(): string {
@@ -658,11 +669,19 @@ kramdown:
     theme: string;
     plugins: string[];
   }): string {
-    // Sanitize all input values to avoid YAML issues
+    // Sanitize all input values to avoid YAML issues and remove problematic characters
     const sanitize = (str: string) => {
       if (!str) return '';
-      // Remove problematic characters and ensure proper escaping
-      return str.replace(/[^\w\s\-\.@/:]/g, '').trim();
+      // Remove problematic characters and ensure ASCII-safe content
+      return str
+        .replace(/[^\w\s\-\.@/:]/g, '')
+        .replace(/[áéíóúñü]/g, (match) => {
+          const replacements: { [key: string]: string } = {
+            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n', 'ü': 'u'
+          };
+          return replacements[match] || match;
+        })
+        .trim();
     };
 
     const title = sanitize(config.title) || 'Mi Blog';
@@ -675,8 +694,12 @@ kramdown:
     const authorTwitter = sanitize(config.authorTwitter) || `@${this.owner}`;
     const theme = sanitize(config.theme) || 'minima';
     
-    // Ensure plugins array is valid
-    const validPlugins = config.plugins.filter(plugin => plugin && typeof plugin === 'string');
+    // Ensure plugins array is valid and contains only safe plugin names
+    const validPlugins = config.plugins
+      .filter(plugin => plugin && typeof plugin === 'string')
+      .map(plugin => sanitize(plugin))
+      .filter(plugin => plugin.length > 0);
+    
     const pluginsYaml = validPlugins.length > 0 
       ? validPlugins.map(plugin => `  - ${plugin}`).join('\n')
       : '  - jekyll-feed\n  - jekyll-seo-tag\n  - jekyll-sitemap';
