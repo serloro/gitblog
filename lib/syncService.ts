@@ -13,6 +13,8 @@ interface SyncResult {
 }
 
 class SyncService {
+  private isPublishing = false; // Prevent multiple simultaneous publishes
+
   async syncToGitHub(): Promise<SyncResult> {
     try {
       // Check if GitHub is configured
@@ -100,6 +102,18 @@ class SyncService {
   }
 
   async publishAndRefreshGitHubPages(): Promise<SyncResult> {
+    // Prevent multiple simultaneous publishes
+    if (this.isPublishing) {
+      return {
+        success: false,
+        message: 'Publication already in progress',
+        synced: 0,
+        errors: ['Another publication is already running']
+      };
+    }
+
+    this.isPublishing = true;
+
     try {
       // Check if GitHub is configured
       const config = await configService.getConfig();
@@ -124,7 +138,15 @@ class SyncService {
       const errors: string[] = [];
       let synced = 0;
 
-      // Step 1: Sync Jekyll configuration
+      // Step 1: Clean up any duplicate posts in wrong directories
+      try {
+        await this.cleanupDuplicatePosts();
+      } catch (error) {
+        console.warn('Failed to cleanup duplicate posts:', error);
+        // Don't fail the entire process for cleanup issues
+      }
+
+      // Step 2: Sync Jekyll configuration
       try {
         const jekyllConfig = await configService.getJekyllConfig();
         const result = await this.syncJekyllConfig(jekyllConfig);
@@ -137,7 +159,7 @@ class SyncService {
         errors.push(`Jekyll config sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 2: Sync homepage (index.md)
+      // Step 3: Sync homepage (index.md)
       try {
         const homepageConfig = await configService.getHomepageConfig();
         const result = await this.syncHomepage(homepageConfig.content);
@@ -150,7 +172,7 @@ class SyncService {
         errors.push(`Homepage sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 3: Sync README.md (automatic, not editable by user)
+      // Step 4: Sync README.md (automatic, not editable by user)
       try {
         const result = await this.syncReadme();
         if (!result.success) {
@@ -162,7 +184,7 @@ class SyncService {
         errors.push(`README sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 4: Sync all posts
+      // Step 5: Sync all posts to _posts directory ONLY
       const localPosts = await localStorageService.getPosts();
       
       for (const post of localPosts) {
@@ -190,7 +212,7 @@ class SyncService {
         }
       }
 
-      // Step 5: Enable GitHub Pages if not already enabled
+      // Step 6: Enable GitHub Pages if not already enabled
       let pagesUrl = '';
       try {
         const pagesResult = await githubApi.enableGitHubPages();
@@ -199,7 +221,7 @@ class SyncService {
         errors.push(`Failed to enable GitHub Pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 6: Trigger a new build
+      // Step 7: Trigger a new build
       try {
         await githubApi.triggerPagesBuild();
       } catch (error) {
@@ -231,6 +253,57 @@ class SyncService {
         synced: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error']
       };
+    } finally {
+      this.isPublishing = false;
+    }
+  }
+
+  private async cleanupDuplicatePosts(): Promise<void> {
+    try {
+      // Check if there are posts in content/_posts directory and remove them
+      const response = await githubApi.api.get(`/repos/${githubApi.owner}/${githubApi.repo}/contents/content/_posts`);
+      
+      if (Array.isArray(response.data)) {
+        for (const file of response.data) {
+          if (file.type === 'file' && file.name.endsWith('.md')) {
+            try {
+              await githubApi.api.delete(`/repos/${githubApi.owner}/${githubApi.repo}/contents/content/_posts/${file.name}`, {
+                data: {
+                  message: `Remove duplicate post from content/_posts: ${file.name}`,
+                  sha: file.sha,
+                  committer: {
+                    name: 'GitBlog',
+                    email: 'gitblog@example.com'
+                  }
+                }
+              });
+            } catch (error) {
+              console.warn(`Failed to remove duplicate post ${file.name}:`, error);
+            }
+          }
+        }
+      }
+
+      // Also try to remove the content directory if it's empty
+      try {
+        await githubApi.api.delete(`/repos/${githubApi.owner}/${githubApi.repo}/contents/content/_posts`, {
+          data: {
+            message: 'Remove empty content/_posts directory',
+            sha: '', // This might fail, but that's okay
+            committer: {
+              name: 'GitBlog',
+              email: 'gitblog@example.com'
+            }
+          }
+        });
+      } catch (error) {
+        // Ignore errors when trying to remove directory
+      }
+    } catch (error) {
+      // If content/_posts doesn't exist, that's fine
+      if (!error.response || error.response.status !== 404) {
+        throw error;
+      }
     }
   }
 

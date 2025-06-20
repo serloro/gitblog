@@ -52,15 +52,15 @@ interface JekyllConfig {
 }
 
 class GitHubApiService {
-  private api: AxiosInstance;
-  private owner: string = '';
-  private repo: string = '';
+  public api: AxiosInstance;
+  public owner: string = '';
+  public repo: string = '';
   private token: string = '';
 
   constructor() {
     this.api = axios.create({
       baseURL: 'https://api.github.com',
-      timeout: 10000,
+      timeout: 15000, // Increased timeout
     });
   }
 
@@ -428,18 +428,34 @@ class GitHubApiService {
     // Remove any non-printable Unicode characters that might cause issues
     content = content.replace(/[\uFFF0-\uFFFF]/g, '');
     
-    // Ensure proper UTF-8 encoding by removing any invalid sequences
+    // Convert problematic characters to ASCII equivalents
+    content = content
+      .replace(/[""]/g, '"')
+      .replace(/['']/g, "'")
+      .replace(/[–—]/g, '-')
+      .replace(/[…]/g, '...')
+      .replace(/[áàâäã]/gi, 'a')
+      .replace(/[éèêë]/gi, 'e')
+      .replace(/[íìîï]/gi, 'i')
+      .replace(/[óòôöõ]/gi, 'o')
+      .replace(/[úùûü]/gi, 'u')
+      .replace(/[ñ]/gi, 'n')
+      .replace(/[ç]/gi, 'c');
+    
+    // Remove any remaining non-ASCII characters except basic punctuation
+    content = content.replace(/[^\x20-\x7E\n\r\t]/g, '');
+    
+    // Ensure proper UTF-8 encoding by testing encode/decode
     try {
-      // Test if the string can be properly encoded/decoded
       const testEncoded = encode(content);
       const testDecoded = decode(testEncoded);
       if (testDecoded !== content) {
-        // If there's a mismatch, clean the content more aggressively
-        content = content.replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, '');
+        // If there's a mismatch, clean more aggressively
+        content = content.replace(/[^\x20-\x7E\n\r\t]/g, '');
       }
     } catch (error) {
-      // If encoding fails, remove all non-ASCII characters except common ones
-      content = content.replace(/[^\x20-\x7E\u00A0-\u024F\u1E00-\u1EFF]/g, '');
+      // If encoding fails, remove all non-ASCII characters
+      content = content.replace(/[^\x20-\x7E\n\r\t]/g, '');
     }
     
     // Ensure the content ends with a newline
@@ -669,10 +685,9 @@ kramdown:
     theme: string;
     plugins: string[];
   }): string {
-    // Sanitize all input values to avoid YAML issues and remove problematic characters
+    // Sanitize all input values to avoid YAML issues and ensure ASCII-only content
     const sanitize = (str: string) => {
       if (!str) return '';
-      // Remove problematic characters and ensure ASCII-safe content
       return str
         .replace(/[^\w\s\-\.@/:]/g, '')
         .replace(/[áéíóúñü]/g, (match) => {
