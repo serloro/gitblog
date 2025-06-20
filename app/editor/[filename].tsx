@@ -102,14 +102,26 @@ export default function EditorScreen() {
     try {
       await localStorageService.deletePost(filename);
       
-      // Navegar de vuelta inmediatamente después de eliminar
-      router.replace('/');
+      // Mostrar mensaje de éxito y navegar inmediatamente
+      Alert.alert(
+        t('common.success'),
+        t('editor.deleted'),
+        [
+          { 
+            text: t('common.ok'), 
+            onPress: () => {
+              // Asegurar que navegamos de vuelta
+              router.replace('/');
+            }
+          }
+        ]
+      );
     } catch (error) {
+      setDeleting(false);
       Alert.alert(
         t('common.error'),
         error instanceof Error ? error.message : t('editor.deleteFailed')
       );
-      setDeleting(false);
     }
   };
 
