@@ -231,53 +231,6 @@ class GitHubApiService {
     }
   }
 
-  async getJekyllConfig(): Promise<GitHubFile> {
-    try {
-      const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_config.yml`);
-      
-      return {
-        name: response.data.name,
-        content: decode(response.data.content),
-        sha: response.data.sha,
-        path: response.data.path,
-      };
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // If _config.yml doesn't exist, return a default configuration
-        return {
-          name: '_config.yml',
-          content: this.getDefaultJekyllConfig(),
-          sha: '',
-          path: '_config.yml',
-        };
-      }
-      throw new Error('Failed to fetch Jekyll configuration');
-    }
-  }
-
-  async updateJekyllConfig(content: string, sha?: string): Promise<void> {
-    try {
-      const encodedContent = encode(content);
-      
-      const payload: any = {
-        message: 'Update Jekyll configuration',
-        content: encodedContent,
-        committer: {
-          name: 'GitBlog',
-          email: 'gitblog@example.com'
-        }
-      };
-
-      if (sha) {
-        payload.sha = sha;
-      }
-      
-      await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_config.yml`, payload);
-    } catch (error) {
-      throw new Error('Failed to update Jekyll configuration');
-    }
-  }
-
   async enableGitHubPages(): Promise<{ url: string; status: string }> {
     try {
       // First, try to get current Pages configuration
@@ -361,43 +314,95 @@ class GitHubApiService {
     }
   }
 
+  async getJekyllConfig(): Promise<GitHubFile> {
+    try {
+      const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_config.yml`);
+      
+      return {
+        name: response.data.name,
+        content: decode(response.data.content),
+        sha: response.data.sha,
+        path: response.data.path,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // If _config.yml doesn't exist, return a default configuration
+        return {
+          name: '_config.yml',
+          content: this.getDefaultJekyllConfig(),
+          sha: '',
+          path: '_config.yml',
+        };
+      }
+      throw new Error('Failed to fetch Jekyll configuration');
+    }
+  }
+
+  async updateJekyllConfig(content: string, sha?: string): Promise<void> {
+    try {
+      // Ensure content is properly encoded as UTF-8
+      const cleanContent = this.sanitizeYamlContent(content);
+      const encodedContent = encode(cleanContent);
+      
+      const payload: any = {
+        message: 'Update Jekyll configuration',
+        content: encodedContent,
+        committer: {
+          name: 'GitBlog',
+          email: 'gitblog@example.com'
+        }
+      };
+
+      if (sha) {
+        payload.sha = sha;
+      }
+      
+      await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_config.yml`, payload);
+    } catch (error) {
+      throw new Error('Failed to update Jekyll configuration');
+    }
+  }
+
+  private sanitizeYamlContent(content: string): string {
+    // Remove any BOM (Byte Order Mark) characters
+    content = content.replace(/^\uFEFF/, '');
+    
+    // Ensure proper line endings (Unix style)
+    content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    // Remove any null characters or other problematic characters
+    content = content.replace(/\0/g, '');
+    
+    // Ensure the content ends with a newline
+    if (!content.endsWith('\n')) {
+      content += '\n';
+    }
+    
+    return content;
+  }
+
   private getDefaultJekyllConfig(): string {
-    return `# ----------------------------------------
-# Información básica del sitio
-# ----------------------------------------
-title: "Mi Blog"
-description: "Un blog sobre desarrollo web, software y tecnología"
+    return `title: "Mi Blog"
+description: "Un blog sobre desarrollo web, software y tecnologia"
 url: "https://${this.owner}.github.io"
 baseurl: ""
 
-# ----------------------------------------
-# Datos del autor
-# ----------------------------------------
 author:
   name: "${this.owner}"
   email: "tu@email.com"
   github: "https://github.com/${this.owner}"
   twitter: "@${this.owner}"
 
-# ----------------------------------------
-# Tema y apariencia
-# ----------------------------------------
 theme: minima
 permalink: /:categories/:title/
 paginate: 5
 paginate_path: "/page:num"
 
-# ----------------------------------------
-# Plugins
-# ----------------------------------------
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
 
-# ----------------------------------------
-# Excluir del build
-# ----------------------------------------
 exclude:
   - Gemfile
   - Gemfile.lock
@@ -405,33 +410,21 @@ exclude:
   - vendor
   - README.md
 
-# ----------------------------------------
-# Configuración del feed
-# ----------------------------------------
 feed:
   path: rss.xml
 
-# ----------------------------------------
-# SEO tags
-# ----------------------------------------
 seo:
   type: Blog
   twitter:
     username: "@${this.owner}"
     card: "summary_large_image"
 
-# ----------------------------------------
-# Datos extra para _data/*.yml
-# ----------------------------------------
 social_links:
   - name: GitHub
     url: https://github.com/${this.owner}
   - name: Twitter
     url: https://twitter.com/${this.owner}
 
-# ----------------------------------------
-# Markdown
-# ----------------------------------------
 markdown: kramdown
 kramdown:
   input: GFM
@@ -475,42 +468,48 @@ kramdown:
     theme: string;
     plugins: string[];
   }): string {
-    const pluginsYaml = config.plugins.map(plugin => `  - ${plugin}`).join('\n');
+    // Sanitize all input values to avoid YAML issues
+    const sanitize = (str: string) => {
+      if (!str) return '';
+      // Remove problematic characters and ensure proper escaping
+      return str.replace(/[^\w\s\-\.@/:]/g, '').trim();
+    };
+
+    const title = sanitize(config.title) || 'Mi Blog';
+    const description = sanitize(config.description) || 'Un blog sobre desarrollo web, software y tecnologia';
+    const url = sanitize(config.url) || `https://${this.owner}.github.io`;
+    const baseurl = sanitize(config.baseurl) || '';
+    const authorName = sanitize(config.authorName) || this.owner;
+    const authorEmail = sanitize(config.authorEmail) || 'tu@email.com';
+    const authorGithub = sanitize(config.authorGithub) || `https://github.com/${this.owner}`;
+    const authorTwitter = sanitize(config.authorTwitter) || `@${this.owner}`;
+    const theme = sanitize(config.theme) || 'minima';
     
-    return `# ----------------------------------------
-# Información básica del sitio
-# ----------------------------------------
-title: "${config.title || 'Mi Blog'}"
-description: "${config.description || 'Un blog sobre desarrollo web, software y tecnología'}"
-url: "${config.url || `https://${this.owner}.github.io`}"
-baseurl: "${config.baseurl || ''}"
+    // Ensure plugins array is valid
+    const validPlugins = config.plugins.filter(plugin => plugin && typeof plugin === 'string');
+    const pluginsYaml = validPlugins.length > 0 
+      ? validPlugins.map(plugin => `  - ${plugin}`).join('\n')
+      : '  - jekyll-feed\n  - jekyll-seo-tag\n  - jekyll-sitemap';
+    
+    return `title: "${title}"
+description: "${description}"
+url: "${url}"
+baseurl: "${baseurl}"
 
-# ----------------------------------------
-# Datos del autor
-# ----------------------------------------
 author:
-  name: "${config.authorName || this.owner}"
-  email: "${config.authorEmail || 'tu@email.com'}"
-  github: "${config.authorGithub || `https://github.com/${this.owner}`}"
-  twitter: "${config.authorTwitter || `@${this.owner}`}"
+  name: "${authorName}"
+  email: "${authorEmail}"
+  github: "${authorGithub}"
+  twitter: "${authorTwitter}"
 
-# ----------------------------------------
-# Tema y apariencia
-# ----------------------------------------
-theme: ${config.theme || 'minima'}
+theme: ${theme}
 permalink: /:categories/:title/
 paginate: 5
 paginate_path: "/page:num"
 
-# ----------------------------------------
-# Plugins
-# ----------------------------------------
 plugins:
 ${pluginsYaml}
 
-# ----------------------------------------
-# Excluir del build
-# ----------------------------------------
 exclude:
   - Gemfile
   - Gemfile.lock
@@ -518,33 +517,21 @@ exclude:
   - vendor
   - README.md
 
-# ----------------------------------------
-# Configuración del feed
-# ----------------------------------------
 feed:
   path: rss.xml
 
-# ----------------------------------------
-# SEO tags
-# ----------------------------------------
 seo:
   type: Blog
   twitter:
-    username: "${config.authorTwitter || `@${this.owner}`}"
+    username: "${authorTwitter}"
     card: "summary_large_image"
 
-# ----------------------------------------
-# Datos extra para _data/*.yml
-# ----------------------------------------
 social_links:
   - name: GitHub
-    url: ${config.authorGithub || `https://github.com/${this.owner}`}
+    url: ${authorGithub}
   - name: Twitter
-    url: ${config.authorTwitter?.replace('@', 'https://twitter.com/') || `https://twitter.com/${this.owner}`}
+    url: ${authorTwitter.replace('@', 'https://twitter.com/')}
 
-# ----------------------------------------
-# Markdown
-# ----------------------------------------
 markdown: kramdown
 kramdown:
   input: GFM
