@@ -57,19 +57,27 @@ class GitHubApiService {
   public repo: string = '';
   private token: string = '';
   private requestQueue: Promise<any> = Promise.resolve();
+  private lastRequestTime = 0;
+  private readonly MIN_REQUEST_INTERVAL = 200; // 200ms between requests
 
   constructor() {
     this.api = axios.create({
       baseURL: 'https://api.github.com',
-      timeout: 30000, // Increased timeout for better reliability
+      timeout: 30000,
     });
 
-    // Add request interceptor to queue requests and avoid rate limiting
-    this.api.interceptors.request.use((config) => {
-      // Add a small delay between requests to avoid hitting rate limits
-      return new Promise((resolve) => {
-        setTimeout(() => resolve(config), 100);
-      });
+    // Enhanced request interceptor with better rate limiting
+    this.api.interceptors.request.use(async (config) => {
+      const now = Date.now();
+      const timeSinceLastRequest = now - this.lastRequestTime;
+      
+      if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
+        const delay = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      this.lastRequestTime = Date.now();
+      return config;
     });
   }
 
@@ -92,12 +100,24 @@ class GitHubApiService {
     return { owner: match[1], repo: match[2].replace('.git', '') };
   }
 
-  // Queue requests to avoid overwhelming GitHub API
+  // Improved queue system with better error handling
   private queueRequest<T>(requestFn: () => Promise<T>): Promise<T> {
-    this.requestQueue = this.requestQueue.then(
-      () => requestFn(),
-      () => requestFn() // Execute even if previous request failed
-    );
+    this.requestQueue = this.requestQueue
+      .then(
+        async () => {
+          try {
+            return await requestFn();
+          } catch (error) {
+            // Log error but don't break the queue
+            console.warn('Queued request failed:', error);
+            throw error;
+          }
+        },
+        async () => {
+          // Even if previous request failed, execute this one
+          return await requestFn();
+        }
+      );
     return this.requestQueue;
   }
 
@@ -313,10 +333,30 @@ class GitHubApiService {
     });
   }
 
-  async triggerPagesBuild(): Promise<void> {
+  // CRITICAL: Only trigger build if absolutely necessary
+  async triggerPagesBuildIfNeeded(): Promise<boolean> {
     return this.queueRequest(async () => {
       try {
+        // Check if there's already a recent build in progress
+        const buildsResponse = await this.api.get(`/repos/${this.owner}/${this.repo}/pages/builds`);
+        const builds = buildsResponse.data;
+        
+        if (builds && builds.length > 0) {
+          const latestBuild = builds[0];
+          const buildTime = new Date(latestBuild.created_at).getTime();
+          const now = Date.now();
+          const timeDiff = now - buildTime;
+          
+          // If there's a build from the last 2 minutes, don't trigger another
+          if (timeDiff < 120000 && (latestBuild.status === 'building' || latestBuild.status === 'built')) {
+            console.log('Recent build found, skipping trigger');
+            return false;
+          }
+        }
+        
+        // Only trigger if no recent build
         await this.api.post(`/repos/${this.owner}/${this.repo}/pages/builds`);
+        return true;
       } catch (error) {
         if (axios.isAxiosError(error)) {
           if (error.response?.status === 404) {
@@ -660,12 +700,16 @@ author:
 theme: minima
 permalink: /:categories/:year/:month/:day/:title/
 
-# Configuracion de paginacion
+# ========================================
+# CONFIGURACION CRITICA PARA MOSTRAR POSTS
+# ========================================
+# IMPORTANTE: Esta configuracion es ESENCIAL para que los posts aparezcan
+show_excerpts: true
 paginate: 10
 paginate_path: "/page:num/"
 
 # ========================================
-# PLUGINS ESENCIALES PARA MOSTRAR POSTS
+# PLUGINS ESENCIALES PARA POSTS
 # ========================================
 plugins:
   - jekyll-feed
@@ -691,7 +735,7 @@ collections:
     permalink: /:categories/:year/:month/:day/:title/
 
 # ========================================
-# CONFIGURACION DE DEFAULTS PARA POSTS
+# DEFAULTS PARA POSTS (CRITICO)
 # ========================================
 defaults:
   - scope:
@@ -701,22 +745,34 @@ defaults:
       layout: "post"
       author: "${this.owner}"
       comments: true
+      published: true
   - scope:
       path: ""
     values:
       layout: "default"
 
 # ========================================
-# CONFIGURACION PARA MOSTRAR POSTS EN HOME
+# CONFIGURACION ESPECIFICA DE MINIMA
 # ========================================
-# Mostrar extractos en la pagina principal
-show_excerpts: true
+minima:
+  # CRITICO: Configuracion para mostrar posts en home
+  show_excerpts: true
+  
+  # Enlaces sociales
+  social_links:
+    github: ${this.owner}
+    twitter: ${this.owner}
+  
+  # Configuracion de header
+  header_pages:
+    - about.md
 
-# Numero de posts por pagina
-paginate: 10
-
-# Configuracion de fecha
+# ========================================
+# CONFIGURACION DE FECHA Y IDIOMA
+# ========================================
 date_format: "%B %d, %Y"
+timezone: Europe/Madrid
+lang: es-ES
 
 # ========================================
 # ARCHIVOS A EXCLUIR
@@ -757,28 +813,6 @@ social_links:
     url: https://twitter.com/${this.owner}
 
 # ========================================
-# CONFIGURACION DE MINIMA THEME
-# ========================================
-minima:
-  # Configuracion especifica del tema Minima
-  social_links:
-    github: ${this.owner}
-    twitter: ${this.owner}
-  
-  # IMPORTANTE: Mostrar extractos en home para que aparezcan los posts
-  show_excerpts: true
-  
-  # Configuracion de header
-  header_pages:
-    - about.md
-
-# ========================================
-# TIMEZONE Y LENGUAJE
-# ========================================
-timezone: Europe/Madrid
-lang: es-ES
-
-# ========================================
 # CONFIGURACION ADICIONAL PARA POSTS
 # ========================================
 # Habilitar resaltado de sintaxis
@@ -787,6 +821,15 @@ highlighter: rouge
 # Configuracion de posts
 future: false
 unpublished: false
+
+# IMPORTANTE: Asegurar que los posts se procesen correctamente
+keep_files: [".git", ".svn"]
+encoding: "utf-8"
+
+# Configuracion de build
+safe: true
+incremental: false
+profile: false
 `;
   }
 
@@ -885,12 +928,16 @@ author:
 theme: ${theme}
 permalink: /:categories/:year/:month/:day/:title/
 
-# Configuracion de paginacion
+# ========================================
+# CONFIGURACION CRITICA PARA MOSTRAR POSTS
+# ========================================
+# IMPORTANTE: Esta configuracion es ESENCIAL para que los posts aparezcan
+show_excerpts: true
 paginate: 10
 paginate_path: "/page:num/"
 
 # ========================================
-# PLUGINS ESENCIALES PARA MOSTRAR POSTS
+# PLUGINS ESENCIALES PARA POSTS
 # ========================================
 plugins:
 ${pluginsYaml}
@@ -913,7 +960,7 @@ collections:
     permalink: /:categories/:year/:month/:day/:title/
 
 # ========================================
-# CONFIGURACION DE DEFAULTS PARA POSTS
+# DEFAULTS PARA POSTS (CRITICO)
 # ========================================
 defaults:
   - scope:
@@ -923,22 +970,34 @@ defaults:
       layout: "post"
       author: "${authorName}"
       comments: true
+      published: true
   - scope:
       path: ""
     values:
       layout: "default"
 
 # ========================================
-# CONFIGURACION PARA MOSTRAR POSTS EN HOME
+# CONFIGURACION ESPECIFICA DE MINIMA
 # ========================================
-# Mostrar extractos en la pagina principal
-show_excerpts: true
+minima:
+  # CRITICO: Configuracion para mostrar posts en home
+  show_excerpts: true
+  
+  # Enlaces sociales
+  social_links:
+    github: ${this.owner}
+    twitter: ${this.owner}
+  
+  # Configuracion de header
+  header_pages:
+    - about.md
 
-# Numero de posts por pagina
-paginate: 10
-
-# Configuracion de fecha
+# ========================================
+# CONFIGURACION DE FECHA Y IDIOMA
+# ========================================
 date_format: "%B %d, %Y"
+timezone: Europe/Madrid
+lang: es-ES
 
 # ========================================
 # ARCHIVOS A EXCLUIR
@@ -979,28 +1038,6 @@ social_links:
     url: ${authorTwitter.replace('@', 'https://twitter.com/')}
 
 # ========================================
-# CONFIGURACION DE MINIMA THEME
-# ========================================
-minima:
-  # Configuracion especifica del tema Minima
-  social_links:
-    github: ${this.owner}
-    twitter: ${this.owner}
-  
-  # IMPORTANTE: Mostrar extractos en home para que aparezcan los posts
-  show_excerpts: true
-  
-  # Configuracion de header
-  header_pages:
-    - about.md
-
-# ========================================
-# TIMEZONE Y LENGUAJE
-# ========================================
-timezone: Europe/Madrid
-lang: es-ES
-
-# ========================================
 # CONFIGURACION ADICIONAL PARA POSTS
 # ========================================
 # Habilitar resaltado de sintaxis
@@ -1009,6 +1046,15 @@ highlighter: rouge
 # Configuracion de posts
 future: false
 unpublished: false
+
+# IMPORTANTE: Asegurar que los posts se procesen correctamente
+keep_files: [".git", ".svn"]
+encoding: "utf-8"
+
+# Configuracion de build
+safe: true
+incremental: false
+profile: false
 `;
   }
 }

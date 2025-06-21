@@ -15,7 +15,7 @@ interface SyncResult {
 class SyncService {
   private isPublishing = false; // Prevent multiple simultaneous publishes
   private lastPublishTime = 0; // Prevent rapid successive publishes
-  private readonly PUBLISH_COOLDOWN = 5000; // 5 seconds cooldown
+  private readonly PUBLISH_COOLDOWN = 10000; // 10 seconds cooldown (increased)
 
   async syncToGitHub(): Promise<SyncResult> {
     try {
@@ -110,18 +110,19 @@ class SyncService {
         success: false,
         message: 'Publication already in progress',
         synced: 0,
-        errors: ['Another publication is already running']
+        errors: ['Another publication is already running. Please wait.']
       };
     }
 
     // Prevent rapid successive publishes
     const now = Date.now();
     if (now - this.lastPublishTime < this.PUBLISH_COOLDOWN) {
+      const remainingTime = Math.ceil((this.PUBLISH_COOLDOWN - (now - this.lastPublishTime)) / 1000);
       return {
         success: false,
-        message: 'Please wait before publishing again',
+        message: `Please wait ${remainingTime} seconds before publishing again`,
         synced: 0,
-        errors: ['Too many requests. Please wait a moment.']
+        errors: [`Cooldown active. Wait ${remainingTime} seconds.`]
       };
     }
 
@@ -152,10 +153,10 @@ class SyncService {
       const errors: string[] = [];
       let synced = 0;
 
-      // Batch all operations to minimize API calls
-      const operations = [];
+      console.log('🚀 Starting publication process...');
 
       // Step 1: Get all required configurations in parallel
+      console.log('📋 Loading configurations...');
       const [jekyllConfig, homepageConfig, localPosts] = await Promise.all([
         configService.getJekyllConfig(),
         configService.getHomepageConfig(),
@@ -163,6 +164,7 @@ class SyncService {
       ]);
 
       // Step 2: Get existing files from GitHub in parallel (only what we need)
+      console.log('📥 Fetching existing files from GitHub...');
       const [existingJekyllConfig, existingHomepage, existingReadme] = await Promise.all([
         githubApi.getJekyllConfig().catch(() => ({ name: '_config.yml', content: '', sha: '', path: '_config.yml' })),
         githubApi.getIndexPage().catch(() => ({ name: 'index.md', content: '', sha: '', path: 'index.md' })),
@@ -170,6 +172,7 @@ class SyncService {
       ]);
 
       // Step 3: Prepare all content updates
+      console.log('⚙️ Preparing content updates...');
       const jekyllConfigContent = githubApi.generateJekyllConfig({
         title: jekyllConfig.title,
         description: jekyllConfig.description,
@@ -184,45 +187,59 @@ class SyncService {
       });
 
       // Step 4: Execute all updates in sequence to avoid conflicts
+      console.log('📝 Updating Jekyll configuration...');
       try {
         // Update Jekyll config
         await githubApi.updateJekyllConfig(jekyllConfigContent, existingJekyllConfig.sha || undefined);
         synced++;
+        console.log('✅ Jekyll config updated');
       } catch (error) {
+        console.error('❌ Jekyll config failed:', error);
         errors.push(`Jekyll config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
+      console.log('🏠 Updating homepage...');
       try {
         // Update homepage
         await githubApi.updateIndexPage(homepageConfig.content, existingHomepage.sha || undefined);
         synced++;
+        console.log('✅ Homepage updated');
       } catch (error) {
+        console.error('❌ Homepage failed:', error);
         errors.push(`Homepage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
+      console.log('📖 Updating README...');
       try {
         // Update README (automatic content)
         await githubApi.updateReadme(existingReadme.sha || undefined);
         synced++;
+        console.log('✅ README updated');
       } catch (error) {
+        console.error('❌ README failed:', error);
         errors.push(`README: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 5: Sync posts (get existing posts info first)
+      console.log('📚 Syncing posts...');
       const existingPosts = new Map();
       try {
         const githubPosts = await githubApi.getPosts();
         githubPosts.forEach(post => {
           existingPosts.set(post.name, post.sha);
         });
+        console.log(`📋 Found ${githubPosts.length} existing posts`);
       } catch (error) {
         // If we can't get existing posts, we'll create them as new
-        console.warn('Could not fetch existing posts:', error);
+        console.warn('⚠️ Could not fetch existing posts:', error);
       }
 
-      // Update posts one by one
-      for (const post of localPosts) {
+      // Update posts one by one with delay to avoid rate limiting
+      for (let i = 0; i < localPosts.length; i++) {
+        const post = localPosts[i];
         try {
+          console.log(`📝 Processing post ${i + 1}/${localPosts.length}: ${post.filename}`);
+          
           const content = createPostContent({
             title: post.title,
             date: post.date,
@@ -234,31 +251,50 @@ class SyncService {
           if (existingSha) {
             // Update existing post
             await githubApi.updatePost(post.filename, content, existingSha);
+            console.log(`✅ Updated: ${post.filename}`);
           } else {
             // Create new post
             await githubApi.createPost(post.filename, content);
+            console.log(`✅ Created: ${post.filename}`);
           }
           
           synced++;
+          
+          // Add small delay between posts to avoid overwhelming GitHub API
+          if (i < localPosts.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
         } catch (error) {
+          console.error(`❌ Post ${post.filename} failed:`, error);
           errors.push(`Post ${post.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
       // Step 6: Handle GitHub Pages (only if everything else succeeded)
       let pagesUrl = '';
-      if (errors.length === 0) {
-        try {
-          const pagesResult = await githubApi.enableGitHubPages();
-          pagesUrl = pagesResult.url;
-          
-          // Only trigger build if Pages was successfully enabled/configured
-          await githubApi.triggerPagesBuild();
-        } catch (error) {
-          // Don't fail the entire process for Pages issues
-          console.warn('GitHub Pages setup warning:', error);
-          errors.push(`Pages setup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.log('🌐 Setting up GitHub Pages...');
+      try {
+        const pagesResult = await githubApi.enableGitHubPages();
+        pagesUrl = pagesResult.url;
+        console.log(`✅ GitHub Pages enabled: ${pagesUrl}`);
+        
+        // Only trigger build if Pages was successfully enabled/configured
+        // and if there were no major errors
+        if (errors.length === 0) {
+          console.log('🔄 Triggering Pages build (if needed)...');
+          const buildTriggered = await githubApi.triggerPagesBuildIfNeeded();
+          if (buildTriggered) {
+            console.log('✅ Pages build triggered');
+          } else {
+            console.log('ℹ️ Pages build skipped (recent build found)');
+          }
+        } else {
+          console.log('⚠️ Skipping build trigger due to errors');
         }
+      } catch (error) {
+        // Don't fail the entire process for Pages issues
+        console.warn('⚠️ GitHub Pages setup warning:', error);
+        errors.push(`Pages setup: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Update sync settings
@@ -266,6 +302,8 @@ class SyncService {
         syncEnabled: true,
         lastSync: new Date()
       });
+
+      console.log(`🎉 Publication completed! Synced: ${synced}, Errors: ${errors.length}`);
 
       const successMessage = pagesUrl 
         ? `Published ${synced} items to GitHub. Site: ${pagesUrl}`
@@ -280,6 +318,7 @@ class SyncService {
       };
 
     } catch (error) {
+      console.error('💥 Publication failed:', error);
       return {
         success: false,
         message: 'Publish failed',
@@ -288,6 +327,7 @@ class SyncService {
       };
     } finally {
       this.isPublishing = false;
+      console.log('🏁 Publication process finished');
     }
   }
 
