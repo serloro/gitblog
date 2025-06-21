@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { encode, decode } from 'base-64';
+import { globalState } from './globalState';
 
 interface GitHubConfig {
   repoUrl: string;
@@ -221,6 +222,10 @@ class GitHubApiService {
             email: 'gitblog@example.com'
           }
         });
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log(`📝 Post created: ${filename} - GitHub Action will be triggered`);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           if (error.response?.status === 422) {
@@ -247,6 +252,10 @@ class GitHubApiService {
             email: 'gitblog@example.com'
           }
         });
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log(`📝 Post updated: ${filename} - GitHub Action will be triggered`);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           if (error.response?.status === 409) {
@@ -271,6 +280,10 @@ class GitHubApiService {
             }
           }
         });
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log(`🗑️ Post deleted: ${filename} - GitHub Action will be triggered`);
       } catch (error) {
         throw new Error('Failed to delete post');
       }
@@ -333,10 +346,20 @@ class GitHubApiService {
     });
   }
 
-  // CRITICAL: Only trigger build if absolutely necessary
-  async triggerPagesBuildIfNeeded(): Promise<boolean> {
+  // CRITICAL: Enhanced build trigger with global cooldown
+  async triggerPagesBuildIfNeeded(): Promise<{ triggered: boolean; reason: string }> {
     return this.queueRequest(async () => {
       try {
+        // Check global cooldown first
+        if (!globalState.canTriggerGitHubAction()) {
+          const remainingTime = globalState.getRemainingCooldown();
+          console.log(`🚫 Global cooldown active: ${remainingTime}s remaining`);
+          return {
+            triggered: false,
+            reason: `Global cooldown active. Wait ${remainingTime} seconds.`
+          };
+        }
+
         // Check if there's already a recent build in progress
         const buildsResponse = await this.api.get(`/repos/${this.owner}/${this.repo}/pages/builds`);
         const builds = buildsResponse.data;
@@ -349,14 +372,23 @@ class GitHubApiService {
           
           // If there's a build from the last 2 minutes, don't trigger another
           if (timeDiff < 120000 && (latestBuild.status === 'building' || latestBuild.status === 'built')) {
-            console.log('Recent build found, skipping trigger');
-            return false;
+            console.log(`🚫 Recent build found (${Math.round(timeDiff / 1000)}s ago), skipping trigger`);
+            return {
+              triggered: false,
+              reason: `Recent build found (${Math.round(timeDiff / 1000)}s ago)`
+            };
           }
         }
         
-        // Only trigger if no recent build
+        // Trigger build and update global timestamp
         await this.api.post(`/repos/${this.owner}/${this.repo}/pages/builds`);
-        return true;
+        globalState.markGitHubActionTriggered();
+        
+        console.log('✅ GitHub Pages build triggered successfully');
+        return {
+          triggered: true,
+          reason: 'Build triggered successfully'
+        };
       } catch (error) {
         if (axios.isAxiosError(error)) {
           if (error.response?.status === 404) {
@@ -428,6 +460,10 @@ class GitHubApiService {
         }
         
         await this.api.put(`/repos/${this.owner}/${this.repo}/contents/index.md`, payload);
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log('🏠 Homepage updated - GitHub Action will be triggered');
       } catch (error) {
         throw new Error('Failed to update homepage');
       }
@@ -481,6 +517,10 @@ class GitHubApiService {
         }
         
         await this.api.put(`/repos/${this.owner}/${this.repo}/contents/README.md`, payload);
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log('📖 README updated - GitHub Action will be triggered');
       } catch (error) {
         throw new Error('Failed to update README');
       }
@@ -670,6 +710,10 @@ GitBlog simplifica el proceso de creacion y mantenimiento de blogs tecnicos, per
         }
         
         await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_config.yml`, payload);
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log('⚙️ Jekyll config updated - GitHub Action will be triggered');
       } catch (error) {
         throw new Error('Failed to update Jekyll configuration');
       }

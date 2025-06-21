@@ -23,6 +23,7 @@ export default function PostsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [syncEnabled, setSyncEnabled] = useState(false);
+  const [cooldownInfo, setCooldownInfo] = useState({ canPublish: true, remainingTime: 0, lastActionTime: null as Date | null });
   const { isDark, theme } = useTheme();
 
   const loadPosts = async () => {
@@ -34,6 +35,10 @@ export default function PostsScreen() {
       // Check sync settings
       const settings = await localStorageService.getSettings();
       setSyncEnabled(settings.syncEnabled);
+      
+      // Update cooldown info
+      const cooldown = syncService.getCooldownStatus();
+      setCooldownInfo(cooldown);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('error.loadFailed'));
     } finally {
@@ -44,6 +49,14 @@ export default function PostsScreen() {
 
   useEffect(() => {
     loadPosts();
+    
+    // Update cooldown info every second
+    const interval = setInterval(() => {
+      const cooldown = syncService.getCooldownStatus();
+      setCooldownInfo(cooldown);
+    }, 1000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Recargar posts cada vez que la pantalla recibe foco
@@ -59,6 +72,16 @@ export default function PostsScreen() {
   };
 
   const handlePublishPress = async () => {
+    // Check cooldown before starting
+    if (!cooldownInfo.canPublish) {
+      Alert.alert(
+        '⏰ Cooldown Activo',
+        `Debes esperar ${cooldownInfo.remainingTime} segundos antes de publicar de nuevo.\n\nEsto evita múltiples GitHub Actions simultáneos.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setPublishing(true);
     try {
       const result = await syncService.publishAndRefreshGitHubPages();
@@ -100,6 +123,9 @@ export default function PostsScreen() {
       );
     } finally {
       setPublishing(false);
+      // Update cooldown info after publishing
+      const cooldown = syncService.getCooldownStatus();
+      setCooldownInfo(cooldown);
     }
   };
 
@@ -190,6 +216,18 @@ export default function PostsScreen() {
       textAlign: 'center',
       marginTop: 16,
     },
+    cooldownInfo: {
+      backgroundColor: theme.colors.surfaceVariant,
+      padding: 12,
+      borderRadius: 8,
+      marginHorizontal: 16,
+      marginBottom: 16,
+    },
+    cooldownText: {
+      color: theme.colors.onSurfaceVariant,
+      fontSize: 12,
+      textAlign: 'center',
+    },
   });
 
   return (
@@ -228,6 +266,18 @@ export default function PostsScreen() {
           </View>
         </View>
       </View>
+
+      {/* Cooldown Information */}
+      {!cooldownInfo.canPublish && (
+        <View style={dynamicStyles.cooldownInfo}>
+          <Text style={dynamicStyles.cooldownText}>
+            ⏰ Cooldown activo: {cooldownInfo.remainingTime}s restantes
+          </Text>
+          <Text style={[dynamicStyles.cooldownText, { marginTop: 4 }]}>
+            Evita múltiples GitHub Actions simultáneos
+          </Text>
+        </View>
+      )}
 
       {posts.length > 0 && (
         <>

@@ -3,6 +3,7 @@ import { localStorageService } from './localStorageService';
 import { githubApi } from './githubApi';
 import { configService } from './configService';
 import { parsePostMetadata, createPostContent } from './postUtils';
+import { globalState } from './globalState';
 
 interface SyncResult {
   success: boolean;
@@ -14,8 +15,6 @@ interface SyncResult {
 
 class SyncService {
   private isPublishing = false; // Prevent multiple simultaneous publishes
-  private lastPublishTime = 0; // Prevent rapid successive publishes
-  private readonly PUBLISH_COOLDOWN = 10000; // 10 seconds cooldown (increased)
 
   async syncToGitHub(): Promise<SyncResult> {
     try {
@@ -114,20 +113,18 @@ class SyncService {
       };
     }
 
-    // Prevent rapid successive publishes
-    const now = Date.now();
-    if (now - this.lastPublishTime < this.PUBLISH_COOLDOWN) {
-      const remainingTime = Math.ceil((this.PUBLISH_COOLDOWN - (now - this.lastPublishTime)) / 1000);
+    // Check global cooldown
+    if (!globalState.canTriggerGitHubAction()) {
+      const remainingTime = globalState.getRemainingCooldown();
       return {
         success: false,
         message: `Please wait ${remainingTime} seconds before publishing again`,
         synced: 0,
-        errors: [`Cooldown active. Wait ${remainingTime} seconds.`]
+        errors: [`Global cooldown active. Wait ${remainingTime} seconds to avoid multiple GitHub Actions.`]
       };
     }
 
     this.isPublishing = true;
-    this.lastPublishTime = now;
 
     try {
       // Check if GitHub is configured
@@ -154,6 +151,7 @@ class SyncService {
       let synced = 0;
 
       console.log('🚀 Starting publication process...');
+      console.log(`🕐 Last GitHub Action: ${globalState.getLastActionTime()?.toISOString() || 'Never'}`);
 
       // Step 1: Get all required configurations in parallel
       console.log('📋 Loading configurations...');
@@ -282,11 +280,11 @@ class SyncService {
         // and if there were no major errors
         if (errors.length === 0) {
           console.log('🔄 Triggering Pages build (if needed)...');
-          const buildTriggered = await githubApi.triggerPagesBuildIfNeeded();
-          if (buildTriggered) {
+          const buildResult = await githubApi.triggerPagesBuildIfNeeded();
+          if (buildResult.triggered) {
             console.log('✅ Pages build triggered');
           } else {
-            console.log('ℹ️ Pages build skipped (recent build found)');
+            console.log(`ℹ️ Pages build skipped: ${buildResult.reason}`);
           }
         } else {
           console.log('⚠️ Skipping build trigger due to errors');
@@ -304,6 +302,7 @@ class SyncService {
       });
 
       console.log(`🎉 Publication completed! Synced: ${synced}, Errors: ${errors.length}`);
+      console.log(`🕐 Next publication allowed after: ${new Date(Date.now() + 60000).toISOString()}`);
 
       const successMessage = pagesUrl 
         ? `Published ${synced} items to GitHub. Site: ${pagesUrl}`
@@ -527,6 +526,20 @@ class SyncService {
         errors: [error instanceof Error ? error.message : 'Unknown error']
       };
     }
+  }
+
+  // Utility method to check cooldown status
+  getCooldownStatus(): { canPublish: boolean; remainingTime: number; lastActionTime: Date | null } {
+    return {
+      canPublish: globalState.canTriggerGitHubAction(),
+      remainingTime: globalState.getRemainingCooldown(),
+      lastActionTime: globalState.getLastActionTime()
+    };
+  }
+
+  // Utility method to reset cooldown (for testing or manual override)
+  resetCooldown(): void {
+    globalState.resetCooldown();
   }
 }
 
