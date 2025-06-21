@@ -14,6 +14,8 @@ interface SyncResult {
 
 class SyncService {
   private isPublishing = false; // Prevent multiple simultaneous publishes
+  private lastPublishTime = 0; // Prevent rapid successive publishes
+  private readonly PUBLISH_COOLDOWN = 5000; // 5 seconds cooldown
 
   async syncToGitHub(): Promise<SyncResult> {
     try {
@@ -112,7 +114,19 @@ class SyncService {
       };
     }
 
+    // Prevent rapid successive publishes
+    const now = Date.now();
+    if (now - this.lastPublishTime < this.PUBLISH_COOLDOWN) {
+      return {
+        success: false,
+        message: 'Please wait before publishing again',
+        synced: 0,
+        errors: ['Too many requests. Please wait a moment.']
+      };
+    }
+
     this.isPublishing = true;
+    this.lastPublishTime = now;
 
     try {
       // Check if GitHub is configured
@@ -126,67 +140,87 @@ class SyncService {
         };
       }
 
-      // Update GitHub API config
+      // Update GitHub API config ONCE
       githubApi.setApiConfig({
         repoUrl: config.repoUrl,
         token: config.token,
       });
 
-      // Test connection
+      // Test connection ONCE
       await githubApi.testConnection();
 
       const errors: string[] = [];
       let synced = 0;
 
-      // Step 1: Clean up any duplicate posts in wrong directories
+      // Batch all operations to minimize API calls
+      const operations = [];
+
+      // Step 1: Get all required configurations in parallel
+      const [jekyllConfig, homepageConfig, localPosts] = await Promise.all([
+        configService.getJekyllConfig(),
+        configService.getHomepageConfig(),
+        localStorageService.getPosts()
+      ]);
+
+      // Step 2: Get existing files from GitHub in parallel (only what we need)
+      const [existingJekyllConfig, existingHomepage, existingReadme] = await Promise.all([
+        githubApi.getJekyllConfig().catch(() => ({ name: '_config.yml', content: '', sha: '', path: '_config.yml' })),
+        githubApi.getIndexPage().catch(() => ({ name: 'index.md', content: '', sha: '', path: 'index.md' })),
+        githubApi.getReadme().catch(() => ({ name: 'README.md', content: '', sha: '', path: 'README.md' }))
+      ]);
+
+      // Step 3: Prepare all content updates
+      const jekyllConfigContent = githubApi.generateJekyllConfig({
+        title: jekyllConfig.title,
+        description: jekyllConfig.description,
+        url: jekyllConfig.url,
+        baseurl: jekyllConfig.baseurl,
+        authorName: jekyllConfig.authorName,
+        authorEmail: jekyllConfig.authorEmail,
+        authorGithub: jekyllConfig.authorGithub,
+        authorTwitter: jekyllConfig.authorTwitter,
+        theme: jekyllConfig.theme,
+        plugins: jekyllConfig.plugins,
+      });
+
+      // Step 4: Execute all updates in sequence to avoid conflicts
       try {
-        await this.cleanupDuplicatePosts();
+        // Update Jekyll config
+        await githubApi.updateJekyllConfig(jekyllConfigContent, existingJekyllConfig.sha || undefined);
+        synced++;
       } catch (error) {
-        console.warn('Failed to cleanup duplicate posts:', error);
-        // Don't fail the entire process for cleanup issues
+        errors.push(`Jekyll config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 2: Sync Jekyll configuration
       try {
-        const jekyllConfig = await configService.getJekyllConfig();
-        const result = await this.syncJekyllConfig(jekyllConfig);
-        if (!result.success) {
-          errors.push('Failed to sync Jekyll configuration');
-        } else {
-          synced++;
-        }
+        // Update homepage
+        await githubApi.updateIndexPage(homepageConfig.content, existingHomepage.sha || undefined);
+        synced++;
       } catch (error) {
-        errors.push(`Jekyll config sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        errors.push(`Homepage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 3: Sync homepage (index.md)
       try {
-        const homepageConfig = await configService.getHomepageConfig();
-        const result = await this.syncHomepage(homepageConfig.content);
-        if (!result.success) {
-          errors.push('Failed to sync homepage');
-        } else {
-          synced++;
-        }
+        // Update README (automatic content)
+        await githubApi.updateReadme(existingReadme.sha || undefined);
+        synced++;
       } catch (error) {
-        errors.push(`Homepage sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        errors.push(`README: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      // Step 4: Sync README.md (automatic, not editable by user)
+      // Step 5: Sync posts (get existing posts info first)
+      const existingPosts = new Map();
       try {
-        const result = await this.syncReadme();
-        if (!result.success) {
-          errors.push('Failed to sync README');
-        } else {
-          synced++;
-        }
+        const githubPosts = await githubApi.getPosts();
+        githubPosts.forEach(post => {
+          existingPosts.set(post.name, post.sha);
+        });
       } catch (error) {
-        errors.push(`README sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // If we can't get existing posts, we'll create them as new
+        console.warn('Could not fetch existing posts:', error);
       }
 
-      // Step 5: Sync all posts to _posts directory ONLY
-      const localPosts = await localStorageService.getPosts();
-      
+      // Update posts one by one
       for (const post of localPosts) {
         try {
           const content = createPostContent({
@@ -196,36 +230,35 @@ class SyncService {
             content: post.content
           });
 
-          // Try to get existing post
-          try {
-            const existingPost = await githubApi.getPost(post.filename);
+          const existingSha = existingPosts.get(post.filename);
+          if (existingSha) {
             // Update existing post
-            await githubApi.updatePost(post.filename, content, existingPost.sha);
-          } catch (error) {
-            // Post doesn't exist, create new one
+            await githubApi.updatePost(post.filename, content, existingSha);
+          } else {
+            // Create new post
             await githubApi.createPost(post.filename, content);
           }
           
           synced++;
         } catch (error) {
-          errors.push(`Failed to sync ${post.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          errors.push(`Post ${post.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
-      // Step 6: Enable GitHub Pages if not already enabled
+      // Step 6: Handle GitHub Pages (only if everything else succeeded)
       let pagesUrl = '';
-      try {
-        const pagesResult = await githubApi.enableGitHubPages();
-        pagesUrl = pagesResult.url;
-      } catch (error) {
-        errors.push(`Failed to enable GitHub Pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-
-      // Step 7: Trigger a new build
-      try {
-        await githubApi.triggerPagesBuild();
-      } catch (error) {
-        errors.push(`Failed to trigger Pages build: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (errors.length === 0) {
+        try {
+          const pagesResult = await githubApi.enableGitHubPages();
+          pagesUrl = pagesResult.url;
+          
+          // Only trigger build if Pages was successfully enabled/configured
+          await githubApi.triggerPagesBuild();
+        } catch (error) {
+          // Don't fail the entire process for Pages issues
+          console.warn('GitHub Pages setup warning:', error);
+          errors.push(`Pages setup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
       }
 
       // Update sync settings
@@ -235,8 +268,8 @@ class SyncService {
       });
 
       const successMessage = pagesUrl 
-        ? `Published ${synced} items to GitHub and refreshed Pages. Site available at: ${pagesUrl}`
-        : `Published ${synced} items to GitHub and triggered Pages refresh`;
+        ? `Published ${synced} items to GitHub. Site: ${pagesUrl}`
+        : `Published ${synced} items to GitHub`;
 
       return {
         success: errors.length === 0,
@@ -249,61 +282,12 @@ class SyncService {
     } catch (error) {
       return {
         success: false,
-        message: 'Publish and refresh failed',
+        message: 'Publish failed',
         synced: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error']
       };
     } finally {
       this.isPublishing = false;
-    }
-  }
-
-  private async cleanupDuplicatePosts(): Promise<void> {
-    try {
-      // Check if there are posts in content/_posts directory and remove them
-      const response = await githubApi.api.get(`/repos/${githubApi.owner}/${githubApi.repo}/contents/content/_posts`);
-      
-      if (Array.isArray(response.data)) {
-        for (const file of response.data) {
-          if (file.type === 'file' && file.name.endsWith('.md')) {
-            try {
-              await githubApi.api.delete(`/repos/${githubApi.owner}/${githubApi.repo}/contents/content/_posts/${file.name}`, {
-                data: {
-                  message: `Remove duplicate post from content/_posts: ${file.name}`,
-                  sha: file.sha,
-                  committer: {
-                    name: 'GitBlog',
-                    email: 'gitblog@example.com'
-                  }
-                }
-              });
-            } catch (error) {
-              console.warn(`Failed to remove duplicate post ${file.name}:`, error);
-            }
-          }
-        }
-      }
-
-      // Also try to remove the content directory if it's empty
-      try {
-        await githubApi.api.delete(`/repos/${githubApi.owner}/${githubApi.repo}/contents/content/_posts`, {
-          data: {
-            message: 'Remove empty content/_posts directory',
-            sha: '', // This might fail, but that's okay
-            committer: {
-              name: 'GitBlog',
-              email: 'gitblog@example.com'
-            }
-          }
-        });
-      } catch (error) {
-        // Ignore errors when trying to remove directory
-      }
-    } catch (error) {
-      // If content/_posts doesn't exist, that's fine
-      if (!error.response || error.response.status !== 404) {
-        throw error;
-      }
     }
   }
 
