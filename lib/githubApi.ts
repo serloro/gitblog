@@ -592,7 +592,14 @@ Este es mi blog personal donde comparto mis pensamientos, experiencias y conocim
 
 ## Ultimas publicaciones
 
-Los posts aparecen automaticamente aqui gracias al layout 'home' de Jekyll.
+<ul>
+  {% for post in site.posts %}
+    <li>
+      <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+      <span>{{ post.date | date: "%d/%m/%Y" }}</span>
+    </li>
+  {% endfor %}
+</ul>
 
 ## Sobre mi
 

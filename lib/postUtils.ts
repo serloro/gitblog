@@ -109,6 +109,7 @@ export function createPostContent(post: {
 }): string {
   const frontmatter = [
     '---',
+    `layout: post`,
     `title: "${post.title}"`,
     `date: ${format(post.date, 'yyyy-MM-dd')}`,
     post.tags && post.tags.length > 0 ? `tags: [${post.tags.map(tag => `"${tag}"`).join(', ')}]` : '',
