@@ -175,8 +175,7 @@ Este es mi blog personal donde comparto mis pensamientos, experiencias y conocim
 <ul>
   {% for post in site.posts %}
     <li>
-      <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
-      <span>{{ post.date | date: "%d/%m/%Y" }}</span>
+      <a href="{{ post.url | relative_url }}">{{ post.title }}</a> - {{ post.date | date: "%d/%m/%Y" }}
     </li>
   {% endfor %}
 </ul>
@@ -208,8 +207,7 @@ Este es mi blog personal donde comparto mis pensamientos, experiencias y conocim
 <ul>
   {% for post in site.posts %}
     <li>
-      <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
-      <span>{{ post.date | date: "%d/%m/%Y" }}</span>
+      <a href="{{ post.url | relative_url }}">{{ post.title }}</a> - {{ post.date | date: "%d/%m/%Y" }}
     </li>
   {% endfor %}
 </ul>
