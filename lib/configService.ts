@@ -244,26 +244,26 @@ Soy un desarrollador apasionado por la tecnologia y el aprendizaje continuo. Me 
       { 
         value: 'default', 
         label: 'Estilo por Defecto', 
-        description: 'Tema oscuro moderno con tipografía monospace',
-        preview: '#0f0f0f background, #64ffda accents'
+        description: 'Tema oscuro moderno con tipografía monospace y acentos cyan',
+        preview: 'Dark theme: #0f0f0f bg, #64ffda accents, Source Code Pro font'
       },
       { 
         value: 'vintage', 
         label: 'Estilo Vintage', 
-        description: 'Terminal retro con colores verdes clásicos',
-        preview: 'Black background, #33ff33 text'
+        description: 'Terminal retro con colores verdes clásicos y bordes punteados',
+        preview: 'Retro terminal: Black bg, #33ff33 text, dashed borders'
       },
       { 
         value: 'msdos', 
         label: 'Estilo MS-DOS', 
-        description: 'Inspirado en las terminales clásicas de DOS',
-        preview: 'Black background, #0f0 terminal style'
+        description: 'Inspirado en las terminales clásicas de DOS con verde brillante',
+        preview: 'DOS terminal: Black bg, #0f0 bright green, square bullets'
       },
       { 
         value: 'modern', 
         label: 'Estilo Moderno', 
-        description: 'Diseño limpio y minimalista para lectura',
-        preview: '#f9f9f9 background, clean typography'
+        description: 'Diseño limpio y minimalista para lectura con tipografía Inter',
+        preview: 'Clean design: #f9f9f9 bg, #333 text, Inter font, shadows'
       }
     ];
   }
@@ -303,305 +303,708 @@ Soy un desarrollador apasionado por la tecnologia y el aprendizaje continuo. Me 
   getCssContent(styleName: string): string {
     switch (styleName) {
       case 'vintage':
-        return `/* retro.css */
+        return `/* ===========================================
+   ESTILO VINTAGE - Terminal Retro Clásico
+   =========================================== */
 
 body {
-  background-color: black;
+  background-color: #000000;
   color: #33ff33;
-  font-family: 'Courier New', monospace;
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
   font-size: 16px;
-  padding: 1rem;
+  line-height: 1.4;
+  padding: 2rem;
+  margin: 0;
+  min-height: 100vh;
 }
 
+/* Enlaces estilo terminal */
 a {
   color: #00ffff;
   text-decoration: none;
+  font-weight: bold;
 }
 a:hover {
   text-decoration: underline;
+  color: #ffffff;
 }
 
-header, h1, h2, h3 {
+/* Cabeceras con bordes punteados */
+header h1, h1, h2, h3, h4, h5, h6 {
   color: #33ff33;
-  border-bottom: 1px dashed #33ff33;
-  padding-bottom: 0.2em;
-  margin-top: 2rem;
+  border-bottom: 2px dashed #33ff33;
+  padding-bottom: 0.3em;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
+header h1 {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Listas con símbolos retro */
 ul {
-  list-style-type: "> ";
+  list-style: none;
+  padding-left: 0;
+}
+ul li:before {
+  content: "> ";
+  color: #33ff33;
+  font-weight: bold;
 }
 
+ol {
+  padding-left: 1.5rem;
+}
+
+/* Código con estilo terminal */
 pre, code {
-  background-color: #111;
+  background-color: #111111;
   color: #00ff00;
-  padding: 0.5rem;
-  border-left: 3px solid #33ff33;
+  padding: 1rem;
+  border-left: 4px solid #33ff33;
+  border-radius: 0;
   overflow-x: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
 }
 
+code {
+  padding: 0.2em 0.4em;
+  border-left: none;
+}
+
+/* Citas con doble borde */
 blockquote {
-  border-left: 4px double #33ff33;
-  padding-left: 1rem;
+  border-left: 6px double #33ff33;
+  padding-left: 1.5rem;
+  margin-left: 0;
   color: #90ee90;
   font-style: italic;
+  background-color: #001100;
+  padding: 1rem 1.5rem;
 }
 
+/* Separadores punteados */
 hr {
   border: none;
-  border-top: 1px dotted #33ff33;
-  margin: 2rem 0;
+  border-top: 2px dotted #33ff33;
+  margin: 3rem 0;
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
+/* Pie de página centrado */
 footer {
   text-align: center;
   font-size: 0.8rem;
   color: #33ff33;
   margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px dashed #33ff33;
+}
+
+/* Párrafos con espaciado */
+p {
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+
+/* Tablas estilo terminal */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+th, td {
+  border: 1px solid #33ff33;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+th {
+  background-color: #001100;
+  color: #33ff33;
+  font-weight: bold;
 }`;
 
       case 'msdos':
-        return `/* msdos.css - Retro Terminal Style */
+        return `/* ===========================================
+   ESTILO MS-DOS - Terminal Clásico DOS
+   =========================================== */
 
 body {
-  background-color: #000;
-  color: #0f0;
-  font-family: "Courier New", monospace;
+  background-color: #000000;
+  color: #00ff00;
+  font-family: "Courier New", "MS Sans Serif", monospace;
   font-size: 16px;
-  padding: 1rem;
-}
-
-a {
-  color: #0ff;
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-
-h1, h2, h3 {
-  border-bottom: 1px dashed #0f0;
-  color: #0f0;
-}
-
-ul {
-  list-style: square;
-}
-
-pre, code {
-  background-color: #111;
-  color: #0f0;
-  padding: 0.5rem;
-  display: block;
-  border: 1px solid #0f0;
-  margin: 1rem 0;
-}
-
-blockquote {
-  color: #ff0;
-  border-left: 3px solid #0f0;
-  padding-left: 1rem;
-  margin: 1rem 0;
-}
-
-footer {
-  color: #080;
-  border-top: 1px dashed #0f0;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  text-align: center;
-}`;
-
-      case 'modern':
-        return `/* modern.css */
-
-body {
-  background-color: #f9f9f9;
-  color: #333;
-  font-family: 'Inter', sans-serif;
-  font-size: 17px;
-  line-height: 1.7;
+  line-height: 1.3;
+  padding: 1.5rem;
   margin: 0;
-  padding: 2rem;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
+  min-height: 100vh;
 }
 
+/* Enlaces estilo DOS */
 a {
-  color: #0066cc;
+  color: #00ffff;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: normal;
 }
 a:hover {
   text-decoration: underline;
+  background-color: #00ffff;
+  color: #000000;
 }
 
-h1, h2, h3 {
-  color: #111;
+/* Cabeceras con líneas DOS */
+h1, h2, h3, h4, h5, h6 {
+  color: #00ff00;
+  border-bottom: 1px solid #00ff00;
+  padding-bottom: 0.2em;
   margin-top: 2rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
 }
 
-pre, code {
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 0.8rem;
-  border-radius: 5px;
-  font-family: 'Fira Code', monospace;
-  font-size: 0.95rem;
-  overflow-x: auto;
+header h1 {
+  text-align: center;
+  font-size: 2rem;
+  border-bottom: 2px solid #00ff00;
+  margin-bottom: 2rem;
 }
 
-blockquote {
-  border-left: 4px solid #ccc;
-  padding-left: 1rem;
-  margin-left: 0;
-  color: #555;
-  background: #f5f5f5;
-}
-
+/* Listas con bullets cuadrados */
 ul {
+  list-style: none;
+  padding-left: 1rem;
+}
+ul li:before {
+  content: "■ ";
+  color: #00ff00;
+}
+
+ol {
   padding-left: 1.5rem;
 }
 
-img {
-  max-width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-
-footer {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #aaa;
-  margin-top: 3rem;
-}`;
-
-      default: // 'default'
-        return `/* style.css */
-
-/* --- Tipografía y colores base --- */
-body {
-  background-color: #0f0f0f;
-  color: #e0e0e0;
-  font-family: 'Source Code Pro', monospace;
-  line-height: 1.6;
-  margin: 0;
-  padding: 0 1rem;
-}
-
-/* --- Enlaces --- */
-a {
-  color: #64ffda;
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-
-/* --- Cabecera principal --- */
-header, h1, h2 {
-  color: #ffffff;
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-/* --- Listado de posts --- */
-ul.post-list {
-  list-style: none;
-  padding: 0;
-}
-ul.post-list li {
-  margin: 0.5rem 0;
-  padding: 0.75rem;
-  background-color: #1a1a1a;
-  border-left: 4px solid #64ffda;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-ul.post-list li:hover {
-  background-color: #333;
-}
-ul.post-list li a {
-  font-size: 1.1rem;
-  font-weight: bold;
-}
-
-/* --- Contenido de post individual --- */
-article {
-  max-width: 800px;
-  margin: 1.5rem auto;
-  padding-bottom: 2rem;
-}
-article h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-article p, article li {
-  font-size: 1rem;
-  color: #ddd;
-}
-article code {
-  font-family: 'Courier New', monospace;
-  background-color: #222;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-}
-
-/* --- Bloques de código --- */
-pre code {
-  display: block;
-  padding: 1rem;
-  background-color: #1e1e1e;
-  border-radius: 6px;
+/* Código con borde DOS */
+pre, code {
+  background-color: #111111;
+  color: #00ff00;
+  padding: 0.8rem;
+  border: 2px solid #00ff00;
+  margin: 1rem 0;
+  font-family: "Courier New", monospace;
+  font-size: 14px;
   overflow-x: auto;
 }
-pre {
+
+code {
+  padding: 0.2em 0.4em;
+  border: 1px solid #00ff00;
+  display: inline;
+}
+
+/* Citas estilo DOS */
+blockquote {
+  color: #ffff00;
+  border-left: 4px solid #00ff00;
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  background-color: #001100;
+  padding: 1rem;
+  font-style: normal;
+}
+
+/* Separadores DOS */
+hr {
+  border: none;
+  border-top: 1px solid #00ff00;
+  margin: 2rem 0;
+}
+
+/* Pie de página DOS */
+footer {
+  color: #008800;
+  border-top: 2px solid #00ff00;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* Párrafos con espaciado DOS */
+p {
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+/* Tablas estilo DOS */
+table {
+  border: 2px solid #00ff00;
+  border-collapse: collapse;
+  width: 100%;
   margin: 1rem 0;
 }
 
-/* --- Bloques de cita --- */
-blockquote {
-  border-left: 4px solid #64ffda;
-  padding-left: 1rem;
-  margin-left: 0;
-  color: #ccc;
-  background-color: #1a1a1a;
-  border-radius: 4px;
+th, td {
+  border: 1px solid #00ff00;
+  padding: 0.4rem;
+  text-align: left;
 }
 
-/* --- Imágenes responsivas --- */
+th {
+  background-color: #003300;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+/* Efectos especiales DOS */
+.blink {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}`;
+
+      case 'modern':
+        return `/* ===========================================
+   ESTILO MODERNO - Diseño Limpio y Elegante
+   =========================================== */
+
+body {
+  background-color: #ffffff;
+  color: #2c3e50;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 18px;
+  line-height: 1.8;
+  margin: 0;
+  padding: 0;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 2rem 3rem;
+}
+
+/* Enlaces modernos */
+a {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+a:hover {
+  color: #2980b9;
+  border-bottom-color: #3498db;
+}
+
+/* Cabeceras modernas */
+h1, h2, h3, h4, h5, h6 {
+  color: #1a1a1a;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+header h1 {
+  text-align: center;
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  color: #2c3e50;
+  font-weight: 800;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+
+/* Listas modernas */
+ul {
+  padding-left: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+ul li {
+  margin-bottom: 0.5rem;
+}
+
+ol {
+  padding-left: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Código con estilo moderno */
+pre, code {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 0.9rem;
+  overflow-x: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+code {
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #e74c3c;
+  background-color: #f8f9fa;
+}
+
+/* Citas modernas */
+blockquote {
+  border-left: 4px solid #3498db;
+  padding-left: 2rem;
+  margin: 2rem 0;
+  color: #5a6c7d;
+  background-color: #f8f9fa;
+  padding: 1.5rem 2rem;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Separadores modernos */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #bdc3c7, transparent);
+  margin: 3rem 0;
+}
+
+/* Pie de página moderno */
+footer {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid #ecf0f1;
+}
+
+/* Párrafos con espaciado moderno */
+p {
+  margin-bottom: 1.5rem;
+  line-height: 1.8;
+  color: #34495e;
+}
+
+/* Imágenes responsivas con sombra */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin: 2rem auto;
+  display: block;
+}
+
+/* Tablas modernas */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 2rem 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+th {
+  background-color: #3498db;
+  color: white;
+  font-weight: 600;
+}
+
+tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Efectos de hover y transiciones */
+* {
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem 1.5rem;
+    font-size: 16px;
+  }
+  
+  header h1 {
+    font-size: 2rem;
+  }
+  
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.3rem; }
+}`;
+
+      default: // 'default'
+        return `/* ===========================================
+   ESTILO POR DEFECTO - Tema Oscuro Moderno
+   =========================================== */
+
+body {
+  background-color: #0f0f0f;
+  color: #e0e0e0;
+  font-family: 'Source Code Pro', 'Fira Code', 'Monaco', monospace;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 1rem 2rem;
+  min-height: 100vh;
+}
+
+/* Enlaces con acento cyan */
+a {
+  color: #64ffda;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+a:hover {
+  text-decoration: underline;
+  color: #80fff4;
+  text-shadow: 0 0 8px #64ffda;
+}
+
+/* Cabeceras centradas */
+header, header h1 {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  color: #64ffda;
+  text-shadow: 0 0 10px #64ffda;
+}
+
+/* Listado de posts con estilo */
+ul.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0;
+}
+
+ul.post-list li {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: #1a1a1a;
+  border-left: 4px solid #64ffda;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+ul.post-list li:hover {
+  background-color: #2a2a2a;
+  border-left-color: #80fff4;
+  transform: translateX(5px);
+  box-shadow: 0 4px 8px rgba(100, 255, 218, 0.2);
+}
+
+ul.post-list li a {
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* Listas normales */
+ul:not(.post-list) {
+  padding-left: 2rem;
+}
+
+ol {
+  padding-left: 2rem;
+}
+
+/* Contenido de posts */
+article {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding-bottom: 3rem;
+}
+
+article h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #64ffda;
+  text-align: center;
+}
+
+article p, article li {
+  font-size: 1rem;
+  color: #d0d0d0;
+  line-height: 1.7;
+}
+
+/* Código con estilo hacker */
+code {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  background-color: #1e1e1e;
+  color: #64ffda;
+  padding: 0.2em 0.5em;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  border: 1px solid #333;
+}
+
+pre {
+  background-color: #1e1e1e;
+  padding: 1.5rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  border: 1px solid #333;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+
+/* Citas destacadas */
+blockquote {
+  border-left: 4px solid #64ffda;
+  padding-left: 1.5rem;
+  margin: 2rem 0;
+  color: #b0b0b0;
+  background-color: #1a1a1a;
+  padding: 1rem 1.5rem;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Imágenes responsivas */
 img {
   max-width: 100%;
   height: auto;
   display: block;
-  margin: 1rem auto;
-  border-radius: 4px;
+  margin: 2rem auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
-/* --- Botón 'Leer más' --- */
+/* Separadores */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #64ffda, transparent);
+  margin: 3rem 0;
+}
+
+/* Botón "Leer más" */
 .read-more {
   display: inline-block;
-  margin-top: 0.5rem;
-  padding: 0.4rem 0.8rem;
+  margin-top: 1rem;
+  padding: 0.6rem 1.2rem;
   background-color: #64ffda;
-  color: #000;
-  border-radius: 3px;
+  color: #000000;
+  border-radius: 6px;
   font-weight: bold;
   text-decoration: none;
-}
-.read-more:hover {
-  background-color: #52c7a6;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(100, 255, 218, 0.3);
 }
 
-/* --- Pie de página --- */
+.read-more:hover {
+  background-color: #52c7a6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(100, 255, 218, 0.4);
+}
+
+/* Pie de página */
 footer {
   text-align: center;
-  padding: 1rem 0;
+  padding: 2rem 0;
   font-size: 0.9rem;
-  color: #666;
-  border-top: 1px solid #333;
-  margin-top: 2rem;
+  color: #666666;
+  border-top: 1px solid #333333;
+  margin-top: 3rem;
+}
+
+/* Tablas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #333;
+}
+
+th {
+  background-color: #64ffda;
+  color: #000000;
+  font-weight: bold;
+}
+
+tr:hover {
+  background-color: #2a2a2a;
+}
+
+/* Efectos de scroll suave */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem;
+    font-size: 14px;
+  }
+  
+  article {
+    margin: 1rem auto;
+  }
+  
+  header h1 {
+    font-size: 2rem;
+  }
+  
+  ul.post-list li {
+    padding: 0.8rem;
+  }
 }`;
     }
   }

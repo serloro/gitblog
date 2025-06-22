@@ -219,28 +219,11 @@ class SyncService {
         // Get the current CSS content based on selected style
         const currentCssContent = configService.getCssContent(jekyllConfig.cssStyle || 'default');
         
-        // Check if CSS needs updating (compare content, not just existence)
-        let needsUpdate = true;
-        if (existingCss.sha && existingCss.content) {
-          // Normalize both contents for comparison (remove extra whitespace/newlines)
-          const normalizeContent = (content: string) => content.replace(/\s+/g, ' ').trim();
-          const existingNormalized = normalizeContent(existingCss.content);
-          const currentNormalized = normalizeContent(currentCssContent);
-          
-          if (existingNormalized === currentNormalized) {
-            needsUpdate = false;
-            console.log(`ℹ️ CSS style '${jekyllConfig.cssStyle || 'default'}' is already up to date`);
-          }
-        }
-
-        if (needsUpdate) {
-          await githubApi.updateCssFile(jekyllConfig.cssStyle || 'default', existingCss.sha || undefined);
-          synced++;
-          console.log(`✅ CSS style updated to '${jekyllConfig.cssStyle || 'default'}'`);
-        } else {
-          // Still count as synced since we verified it's correct
-          synced++;
-        }
+        // ALWAYS update CSS - don't compare content, just force update
+        // This ensures the CSS is always current with the selected style
+        await githubApi.updateCssFile(jekyllConfig.cssStyle || 'default', existingCss.sha || undefined);
+        synced++;
+        console.log(`✅ CSS style FORCE updated to '${jekyllConfig.cssStyle || 'default'}'`);
       } catch (error) {
         console.error('❌ CSS update failed:', error);
         errors.push(`CSS style: ${error instanceof Error ? error.message : 'Unknown error'}`);
