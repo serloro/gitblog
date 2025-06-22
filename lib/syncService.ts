@@ -15,6 +15,8 @@ interface SyncResult {
 
 class SyncService {
   private isPublishing = false; // Prevent multiple simultaneous publishes
+  private publishingStartTime = 0; // Track when publishing started
+  private readonly PUBLISH_TIMEOUT = 300000; // 5 minutes timeout for publishing
 
   async syncToGitHub(): Promise<SyncResult> {
     try {
@@ -103,19 +105,30 @@ class SyncService {
   }
 
   async publishAndRefreshGitHubPages(): Promise<SyncResult> {
-    // Prevent multiple simultaneous publishes
+    const now = Date.now();
+
+    // Check if already publishing
     if (this.isPublishing) {
-      return {
-        success: false,
-        message: 'Publication already in progress',
-        synced: 0,
-        errors: ['Another publication is already running. Please wait.']
-      };
+      // Check if publishing has been stuck for too long
+      if (now - this.publishingStartTime > this.PUBLISH_TIMEOUT) {
+        console.warn('⚠️ Publishing timeout detected, resetting state');
+        this.isPublishing = false;
+        this.publishingStartTime = 0;
+      } else {
+        console.log('🚫 Publication already in progress');
+        return {
+          success: false,
+          message: 'Publication already in progress',
+          synced: 0,
+          errors: ['Another publication is already running. Please wait.']
+        };
+      }
     }
 
     // Check global cooldown
     if (!globalState.canTriggerGitHubAction()) {
       const remainingTime = globalState.getRemainingCooldown();
+      console.log(`🚫 Global cooldown active: ${remainingTime}s remaining`);
       return {
         success: false,
         message: `Please wait ${remainingTime} seconds before publishing again`,
@@ -124,7 +137,9 @@ class SyncService {
       };
     }
 
+    // Set publishing state
     this.isPublishing = true;
+    this.publishingStartTime = now;
 
     try {
       // Check if GitHub is configured
@@ -325,7 +340,9 @@ class SyncService {
         errors: [error instanceof Error ? error.message : 'Unknown error']
       };
     } finally {
+      // Always reset publishing state
       this.isPublishing = false;
+      this.publishingStartTime = 0;
       console.log('🏁 Publication process finished');
     }
   }
@@ -531,8 +548,8 @@ class SyncService {
   // Utility method to check cooldown status
   getCooldownStatus(): { canPublish: boolean; remainingTime: number; lastActionTime: Date | null } {
     return {
-      canPublish: globalState.canTriggerGitHubAction(),
-      remainingTime: globalState.getRemainingCooldown(),
+      canPublish: globalState.canTriggerGitHubAction() && !this.isPublishing,
+      remainingTime: Math.max(globalState.getRemainingCooldown(), this.isPublishing ? 1 : 0),
       lastActionTime: globalState.getLastActionTime()
     };
   }
@@ -540,6 +557,13 @@ class SyncService {
   // Utility method to reset cooldown (for testing or manual override)
   resetCooldown(): void {
     globalState.resetCooldown();
+    this.isPublishing = false;
+    this.publishingStartTime = 0;
+  }
+
+  // Check if currently publishing
+  isCurrentlyPublishing(): boolean {
+    return this.isPublishing;
   }
 }
 

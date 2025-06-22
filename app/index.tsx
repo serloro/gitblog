@@ -72,12 +72,22 @@ export default function PostsScreen() {
   };
 
   const handlePublishPress = async () => {
+    // Check if already publishing
+    if (syncService.isCurrentlyPublishing()) {
+      Alert.alert(
+        t('publish.inProgress'),
+        t('publish.inProgressMessage'),
+        [{ text: t('common.ok') }]
+      );
+      return;
+    }
+
     // Check cooldown before starting
     if (!cooldownInfo.canPublish) {
       Alert.alert(
-        '⏰ Cooldown Activo',
-        `Debes esperar ${cooldownInfo.remainingTime} segundos antes de publicar de nuevo.\n\nEsto evita múltiples GitHub Actions simultáneos.`,
-        [{ text: 'OK' }]
+        t('publish.cooldownActive'),
+        t('publish.cooldownMessage', { seconds: cooldownInfo.remainingTime }),
+        [{ text: t('common.ok') }]
       );
       return;
     }
@@ -88,12 +98,12 @@ export default function PostsScreen() {
       
       if (result.success) {
         Alert.alert(
-          '🎉 ¡Publicación Exitosa!', 
+          t('publish.success'), 
           result.message + '\n\n' + 
-          (result.pagesUrl ? `Tu sitio estará disponible en unos minutos en:\n${result.pagesUrl}` : 'GitHub Pages se está actualizando...'),
+          (result.pagesUrl ? t('publish.successMessage') + '\n' + result.pagesUrl : 'GitHub Pages se está actualizando...'),
           [
             {
-              text: 'Ver Sitio',
+              text: t('publish.viewSite'),
               onPress: () => {
                 if (result.pagesUrl) {
                   // In a real app, you would open the URL in a browser
@@ -103,23 +113,23 @@ export default function PostsScreen() {
               style: 'default'
             },
             {
-              text: 'OK',
+              text: t('common.ok'),
               style: 'cancel'
             }
           ]
         );
       } else {
         Alert.alert(
-          '⚠️ Publicación con Errores', 
-          result.message + '\n\nErrores:\n' + result.errors.join('\n'),
-          [{ text: 'OK' }]
+          t('publish.withErrors'), 
+          result.message + '\n\n' + t('publish.errorsMessage') + '\n' + result.errors.join('\n'),
+          [{ text: t('common.ok') }]
         );
       }
     } catch (error) {
       Alert.alert(
-        '❌ Error de Publicación', 
-        'No se pudo publicar el sitio. Verifica tu configuración de GitHub.',
-        [{ text: 'OK' }]
+        t('publish.failed'), 
+        t('publish.failedMessage'),
+        [{ text: t('common.ok') }]
       );
     } finally {
       setPublishing(false);
@@ -237,10 +247,10 @@ export default function PostsScreen() {
           <Card style={dynamicStyles.publishingCard}>
             <Card.Content style={{ alignItems: 'center' }}>
               <Text variant="titleMedium" style={dynamicStyles.publishingText}>
-                🚀 Publicando en GitHub Pages...
+                🚀 {t('publish.publishing')}
               </Text>
               <Text variant="bodyMedium" style={[dynamicStyles.publishingText, { marginTop: 8 }]}>
-                Sincronizando posts y configuración
+                {t('publish.syncingPosts')}
               </Text>
             </Card.Content>
           </Card>
@@ -271,10 +281,10 @@ export default function PostsScreen() {
       {!cooldownInfo.canPublish && (
         <View style={dynamicStyles.cooldownInfo}>
           <Text style={dynamicStyles.cooldownText}>
-            ⏰ Cooldown activo: {cooldownInfo.remainingTime}s restantes
+            ⏰ {t('cooldown.active', { seconds: cooldownInfo.remainingTime })}
           </Text>
           <Text style={[dynamicStyles.cooldownText, { marginTop: 4 }]}>
-            Evita múltiples GitHub Actions simultáneos
+            {t('cooldown.description')}
           </Text>
         </View>
       )}

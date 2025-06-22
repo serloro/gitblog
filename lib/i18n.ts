@@ -115,6 +115,25 @@ const translations: Translations = {
     'settings.cleared': 'All data cleared successfully',
     'settings.clearFailed': 'Failed to clear data',
     
+    // Publish and GitHub Actions
+    'publish.publishing': 'Publishing to GitHub Pages...',
+    'publish.syncingPosts': 'Syncing posts and configuration',
+    'publish.success': 'Publication Successful!',
+    'publish.successMessage': 'Your site will be available in a few minutes at:',
+    'publish.viewSite': 'View Site',
+    'publish.withErrors': 'Publication with Errors',
+    'publish.errorsMessage': 'Errors:',
+    'publish.failed': 'Publication Error',
+    'publish.failedMessage': 'Could not publish the site. Check your GitHub configuration.',
+    'publish.cooldownActive': 'Cooldown Active',
+    'publish.cooldownMessage': 'You must wait {{seconds}} seconds before publishing again.\n\nThis prevents multiple simultaneous GitHub Actions.',
+    'publish.inProgress': 'Publication already in progress',
+    'publish.inProgressMessage': 'Another publication is already running. Please wait.',
+    
+    // Cooldown info
+    'cooldown.active': 'Cooldown active: {{seconds}}s remaining',
+    'cooldown.description': 'Prevents multiple simultaneous GitHub Actions',
+    
     // Common
     'common.ok': 'OK',
     'common.cancel': 'Cancel',
@@ -243,6 +262,25 @@ const translations: Translations = {
     'settings.clearAll': 'Borrar Todo',
     'settings.cleared': 'Todos los datos borrados exitosamente',
     'settings.clearFailed': 'Error al borrar los datos',
+    
+    // Publish and GitHub Actions
+    'publish.publishing': 'Publicando en GitHub Pages...',
+    'publish.syncingPosts': 'Sincronizando publicaciones y configuración',
+    'publish.success': '¡Publicación Exitosa!',
+    'publish.successMessage': 'Tu sitio estará disponible en unos minutos en:',
+    'publish.viewSite': 'Ver Sitio',
+    'publish.withErrors': 'Publicación con Errores',
+    'publish.errorsMessage': 'Errores:',
+    'publish.failed': 'Error de Publicación',
+    'publish.failedMessage': 'No se pudo publicar el sitio. Verifica tu configuración de GitHub.',
+    'publish.cooldownActive': 'Cooldown Activo',
+    'publish.cooldownMessage': 'Debes esperar {{seconds}} segundos antes de publicar de nuevo.\n\nEsto evita múltiples GitHub Actions simultáneos.',
+    'publish.inProgress': 'Publicación en progreso',
+    'publish.inProgressMessage': 'Ya hay una publicación en curso. Por favor espera.',
+    
+    // Cooldown info
+    'cooldown.active': 'Cooldown activo: {{seconds}}s restantes',
+    'cooldown.description': 'Evita múltiples GitHub Actions simultáneos',
     
     // Common
     'common.ok': 'OK',

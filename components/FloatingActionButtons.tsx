@@ -122,7 +122,7 @@ export function FloatingActionButtons({ onPublishPress }: FloatingActionButtonsP
     {
       icon: Globe,
       onPress: handlePublish,
-      tooltip: 'Publish & Refresh Pages',
+      tooltip: t('nav.publish'),
       color: theme.colors.onSurface,
     },
     {
