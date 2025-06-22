@@ -162,15 +162,15 @@ class ConfigService {
       if (!configStr) {
         return {
           content: `---
-layout: home
+layout: default
 title: "Inicio"
 ---
 
 # Bienvenido a mi blog
 
-Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnología y otros temas que me interesan.
+Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnologia y otros temas que me interesan.
 
-## Últimas publicaciones
+## Ultimas publicaciones
 
 <ul>
   {% for post in site.posts %}
@@ -181,13 +181,13 @@ Este es mi blog personal donde comparto mis pensamientos, experiencias y conocim
   {% endfor %}
 </ul>
 
-## Sobre mí
+## Sobre mi
 
-Soy un desarrollador apasionado por la tecnología y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
+Soy un desarrollador apasionado por la tecnologia y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
 
 ---
 
-*¡Gracias por visitar mi blog!*`
+*Gracias por visitar mi blog!*`
         };
       }
 
@@ -195,15 +195,15 @@ Soy un desarrollador apasionado por la tecnología y el aprendizaje continuo. Me
     } catch (error) {
       return {
         content: `---
-layout: home
+layout: default
 title: "Inicio"
 ---
 
 # Bienvenido a mi blog
 
-Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnología y otros temas que me interesan.
+Este es mi blog personal donde comparto mis pensamientos, experiencias y conocimientos sobre desarrollo web, tecnologia y otros temas que me interesan.
 
-## Últimas publicaciones
+## Ultimas publicaciones
 
 <ul>
   {% for post in site.posts %}
@@ -214,13 +214,13 @@ Este es mi blog personal donde comparto mis pensamientos, experiencias y conocim
   {% endfor %}
 </ul>
 
-## Sobre mí
+## Sobre mi
 
-Soy un desarrollador apasionado por la tecnología y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
+Soy un desarrollador apasionado por la tecnologia y el aprendizaje continuo. Me gusta compartir lo que aprendo y conectar con otros desarrolladores.
 
 ---
 
-*¡Gracias por visitar mi blog!*`
+*Gracias por visitar mi blog!*`
       };
     }
   }

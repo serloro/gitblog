@@ -582,7 +582,7 @@ class GitHubApiService {
 
   private getDefaultIndexPage(): string {
     return `---
-layout: home
+layout: default
 title: "Inicio"
 ---
 
@@ -870,7 +870,7 @@ social_links:
 highlighter: rouge
 
 # Configuracion de posts
-future: false
+future: true
 unpublished: false
 
 # IMPORTANTE: Asegurar que los posts se procesen correctamente
@@ -1095,7 +1095,7 @@ social_links:
 highlighter: rouge
 
 # Configuracion de posts
-future: false
+future: true
 unpublished: false
 
 # IMPORTANTE: Asegurar que los posts se procesen correctamente
