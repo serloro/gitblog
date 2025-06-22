@@ -35,7 +35,7 @@ export default function SettingsScreen() {
   const [jekyllAuthorEmail, setJekyllAuthorEmail] = useState('');
   const [jekyllAuthorGithub, setJekyllAuthorGithub] = useState('');
   const [jekyllAuthorTwitter, setJekyllAuthorTwitter] = useState('');
-  const [jekyllTheme, setJekyllTheme] = useState('minima');
+  const [jekyllCssStyle, setJekyllCssStyle] = useState('default'); // Changed from theme to cssStyle
   const [jekyllPlugins, setJekyllPlugins] = useState<string[]>(['jekyll-feed', 'jekyll-seo-tag', 'jekyll-sitemap']);
   const [savingJekyll, setSavingJekyll] = useState(false);
   
@@ -46,7 +46,7 @@ export default function SettingsScreen() {
   const { isDark, toggleTheme, theme } = useTheme();
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
 
-  const availableThemes = configService.getAvailableThemes();
+  const availableCssStyles = configService.getAvailableCssStyles(); // Changed from themes to CSS styles
   const availablePlugins = configService.getAvailablePlugins();
 
   useEffect(() => {
@@ -74,7 +74,7 @@ export default function SettingsScreen() {
       setJekyllAuthorEmail(jekyllConfig.authorEmail);
       setJekyllAuthorGithub(jekyllConfig.authorGithub);
       setJekyllAuthorTwitter(jekyllConfig.authorTwitter);
-      setJekyllTheme(jekyllConfig.theme);
+      setJekyllCssStyle(jekyllConfig.cssStyle || 'default'); // Changed from theme to cssStyle
       setJekyllPlugins(jekyllConfig.plugins);
       
       // Load homepage configuration
@@ -146,7 +146,8 @@ export default function SettingsScreen() {
         authorEmail: jekyllAuthorEmail,
         authorGithub: jekyllAuthorGithub,
         authorTwitter: jekyllAuthorTwitter,
-        theme: jekyllTheme,
+        theme: 'minima', // Always use minima theme
+        cssStyle: jekyllCssStyle, // Store selected CSS style
         plugins: jekyllPlugins,
       });
 
@@ -161,7 +162,7 @@ export default function SettingsScreen() {
           authorEmail: jekyllAuthorEmail,
           authorGithub: jekyllAuthorGithub,
           authorTwitter: jekyllAuthorTwitter,
-          theme: jekyllTheme,
+          theme: 'minima', // Always use minima theme
           plugins: jekyllPlugins,
         });
 
@@ -427,14 +428,21 @@ export default function SettingsScreen() {
       marginHorizontal: 16,
       marginBottom: 16,
     },
-    themeOption: {
-      marginBottom: 12,
+    styleOption: {
+      marginBottom: 16,
     },
-    themeDescription: {
+    styleDescription: {
       fontSize: 12,
       color: theme.colors.onSurfaceVariant,
       marginLeft: 32,
       marginTop: 4,
+    },
+    stylePreview: {
+      fontSize: 10,
+      color: theme.colors.outline,
+      marginLeft: 32,
+      marginTop: 2,
+      fontStyle: 'italic',
     },
     pluginCategory: {
       marginBottom: 16,
@@ -718,24 +726,27 @@ export default function SettingsScreen() {
           <View style={styles.sectionHeader}>
             <Palette size={24} color="#3b82f6" />
             <Text variant="titleMedium" style={dynamicStyles.sectionTitle}>
-              Tema del Sitio
+              Estilo Visual del Sitio
             </Text>
           </View>
 
           <Text variant="bodyMedium" style={dynamicStyles.helpText}>
-            Selecciona el tema visual para tu sitio Jekyll
+            Selecciona el estilo CSS que se aplicará a tu sitio Jekyll. El tema base siempre será Minima.
           </Text>
 
-          <RadioButton.Group onValueChange={setJekyllTheme} value={jekyllTheme}>
-            {availableThemes.map((theme) => (
-              <View key={theme.value} style={dynamicStyles.themeOption}>
+          <RadioButton.Group onValueChange={setJekyllCssStyle} value={jekyllCssStyle}>
+            {availableCssStyles.map((style) => (
+              <View key={style.value} style={dynamicStyles.styleOption}>
                 <RadioButton.Item
-                  label={theme.label}
-                  value={theme.value}
+                  label={style.label}
+                  value={style.value}
                   labelStyle={{ color: dynamicStyles.sectionTitle.color }}
                 />
-                <Text style={dynamicStyles.themeDescription}>
-                  {theme.description}
+                <Text style={dynamicStyles.styleDescription}>
+                  {style.description}
+                </Text>
+                <Text style={dynamicStyles.stylePreview}>
+                  {style.preview}
                 </Text>
               </View>
             ))}

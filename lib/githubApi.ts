@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { encode, decode } from 'base-64';
 import { globalState } from './globalState';
+import { configService } from './configService';
 
 interface GitHubConfig {
   repoUrl: string;
@@ -527,6 +528,65 @@ class GitHubApiService {
     });
   }
 
+  // NEW: Update CSS file based on selected style
+  async updateCssFile(cssStyle: string, sha?: string): Promise<void> {
+    return this.queueRequest(async () => {
+      try {
+        const cssContent = configService.getCssContent(cssStyle);
+        const cleanContent = this.sanitizeContent(cssContent);
+        const encodedContent = encode(cleanContent);
+        
+        const payload: any = {
+          message: `Update CSS style to ${cssStyle}`,
+          content: encodedContent,
+          committer: {
+            name: 'GitBlog',
+            email: 'gitblog@example.com'
+          }
+        };
+
+        if (sha) {
+          payload.sha = sha;
+        }
+        
+        await this.api.put(`/repos/${this.owner}/${this.repo}/contents/assets/css/style.css`, payload);
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log(`🎨 CSS style updated to ${cssStyle} - GitHub Action will be triggered`);
+      } catch (error) {
+        throw new Error('Failed to update CSS file');
+      }
+    });
+  }
+
+  // NEW: Get existing CSS file
+  async getCssFile(): Promise<GitHubFile> {
+    return this.queueRequest(async () => {
+      try {
+        const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/assets/css/style.css`);
+        
+        return {
+          name: response.data.name,
+          content: decode(response.data.content),
+          sha: response.data.sha,
+          path: response.data.path,
+        };
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          // If style.css doesn't exist, return default style
+          return {
+            name: 'style.css',
+            content: configService.getCssContent('default'),
+            sha: '',
+            path: 'assets/css/style.css',
+          };
+        }
+        throw new Error('Failed to fetch CSS file');
+      }
+    });
+  }
+
   private sanitizeContent(content: string): string {
     if (!content) return '';
     
@@ -631,7 +691,7 @@ Este blog ha sido desarrollado utilizando [**GitBlog**](https://bolt.new), una h
 **Caracteristicas principales:**
 - Editor movil y web intuitivo
 - Sincronizacion automatica con GitHub
-- Multiples temas de Jekyll
+- Multiples estilos CSS personalizables
 - Editor Markdown con vista previa
 - Sistema de etiquetas
 - Publicacion automatica en GitHub Pages

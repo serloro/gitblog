@@ -178,10 +178,11 @@ class SyncService {
 
       // Step 2: Get existing files from GitHub in parallel (only what we need)
       console.log('📥 Fetching existing files from GitHub...');
-      const [existingJekyllConfig, existingHomepage, existingReadme] = await Promise.all([
+      const [existingJekyllConfig, existingHomepage, existingReadme, existingCss] = await Promise.all([
         githubApi.getJekyllConfig().catch(() => ({ name: '_config.yml', content: '', sha: '', path: '_config.yml' })),
         githubApi.getIndexPage().catch(() => ({ name: 'index.md', content: '', sha: '', path: 'index.md' })),
-        githubApi.getReadme().catch(() => ({ name: 'README.md', content: '', sha: '', path: 'README.md' }))
+        githubApi.getReadme().catch(() => ({ name: 'README.md', content: '', sha: '', path: 'README.md' })),
+        githubApi.getCssFile().catch(() => ({ name: 'style.css', content: '', sha: '', path: 'assets/css/style.css' }))
       ]);
 
       // Step 3: Prepare all content updates
@@ -209,6 +210,17 @@ class SyncService {
       } catch (error) {
         console.error('❌ Jekyll config failed:', error);
         errors.push(`Jekyll config: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      console.log('🎨 Updating CSS style...');
+      try {
+        // Update CSS file based on selected style
+        await githubApi.updateCssFile(jekyllConfig.cssStyle || 'default', existingCss.sha || undefined);
+        synced++;
+        console.log(`✅ CSS style updated to ${jekyllConfig.cssStyle || 'default'}`);
+      } catch (error) {
+        console.error('❌ CSS update failed:', error);
+        errors.push(`CSS style: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       console.log('🏠 Updating homepage...');
