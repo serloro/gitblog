@@ -213,12 +213,34 @@ class SyncService {
         errors.push(`Jekyll config: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
-      console.log('🎨 Updating CSS style...');
+      // CRITICAL: Always update CSS file with current style selection
+      console.log(`🎨 Updating CSS style to '${jekyllConfig.cssStyle || 'default'}'...`);
       try {
-        // Update CSS file based on selected style
-        await githubApi.updateCssFile(jekyllConfig.cssStyle || 'default', existingCss.sha || undefined);
-        synced++;
-        console.log(`✅ CSS style updated to ${jekyllConfig.cssStyle || 'default'}`);
+        // Get the current CSS content based on selected style
+        const currentCssContent = configService.getCssContent(jekyllConfig.cssStyle || 'default');
+        
+        // Check if CSS needs updating (compare content, not just existence)
+        let needsUpdate = true;
+        if (existingCss.sha && existingCss.content) {
+          // Normalize both contents for comparison (remove extra whitespace/newlines)
+          const normalizeContent = (content: string) => content.replace(/\s+/g, ' ').trim();
+          const existingNormalized = normalizeContent(existingCss.content);
+          const currentNormalized = normalizeContent(currentCssContent);
+          
+          if (existingNormalized === currentNormalized) {
+            needsUpdate = false;
+            console.log(`ℹ️ CSS style '${jekyllConfig.cssStyle || 'default'}' is already up to date`);
+          }
+        }
+
+        if (needsUpdate) {
+          await githubApi.updateCssFile(jekyllConfig.cssStyle || 'default', existingCss.sha || undefined);
+          synced++;
+          console.log(`✅ CSS style updated to '${jekyllConfig.cssStyle || 'default'}'`);
+        } else {
+          // Still count as synced since we verified it's correct
+          synced++;
+        }
       } catch (error) {
         console.error('❌ CSS update failed:', error);
         errors.push(`CSS style: ${error instanceof Error ? error.message : 'Unknown error'}`);
