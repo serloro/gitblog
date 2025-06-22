@@ -178,11 +178,12 @@ class SyncService {
 
       // Step 2: Get existing files from GitHub in parallel (only what we need)
       console.log('📥 Fetching existing files from GitHub...');
-      const [existingJekyllConfig, existingHomepage, existingReadme, existingCss] = await Promise.all([
+      const [existingJekyllConfig, existingHomepage, existingReadme, existingCss, existingLayout] = await Promise.all([
         githubApi.getJekyllConfig().catch(() => ({ name: '_config.yml', content: '', sha: '', path: '_config.yml' })),
         githubApi.getIndexPage().catch(() => ({ name: 'index.md', content: '', sha: '', path: 'index.md' })),
         githubApi.getReadme().catch(() => ({ name: 'README.md', content: '', sha: '', path: 'README.md' })),
-        githubApi.getCssFile().catch(() => ({ name: 'style.css', content: '', sha: '', path: 'assets/css/style.css' }))
+        githubApi.getCssFile().catch(() => ({ name: 'style.css', content: '', sha: '', path: 'assets/css/style.css' })),
+        githubApi.getDefaultLayout().catch(() => ({ name: 'default.html', content: '', sha: '', path: '_layouts/default.html' }))
       ]);
 
       // Step 3: Prepare all content updates
@@ -221,6 +222,17 @@ class SyncService {
       } catch (error) {
         console.error('❌ CSS update failed:', error);
         errors.push(`CSS style: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      console.log('🎨 Updating default layout...');
+      try {
+        // Update default layout file
+        await githubApi.updateDefaultLayout(existingLayout.sha || undefined);
+        synced++;
+        console.log('✅ Default layout updated');
+      } catch (error) {
+        console.error('❌ Default layout failed:', error);
+        errors.push(`Default layout: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       console.log('🏠 Updating homepage...');

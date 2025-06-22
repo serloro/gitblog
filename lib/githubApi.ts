@@ -587,6 +587,65 @@ class GitHubApiService {
     });
   }
 
+  // NEW: Update default layout file
+  async updateDefaultLayout(sha?: string): Promise<void> {
+    return this.queueRequest(async () => {
+      try {
+        const layoutContent = this.getDefaultLayoutContent();
+        const cleanContent = this.sanitizeContent(layoutContent);
+        const encodedContent = encode(cleanContent);
+        
+        const payload: any = {
+          message: 'Update default layout (_layouts/default.html)',
+          content: encodedContent,
+          committer: {
+            name: 'GitBlog',
+            email: 'gitblog@example.com'
+          }
+        };
+
+        if (sha) {
+          payload.sha = sha;
+        }
+        
+        await this.api.put(`/repos/${this.owner}/${this.repo}/contents/_layouts/default.html`, payload);
+        
+        // Mark that we've made a change that will trigger GitHub Actions
+        globalState.markGitHubActionTriggered();
+        console.log('🎨 Default layout updated - GitHub Action will be triggered');
+      } catch (error) {
+        throw new Error('Failed to update default layout');
+      }
+    });
+  }
+
+  // NEW: Get existing default layout file
+  async getDefaultLayout(): Promise<GitHubFile> {
+    return this.queueRequest(async () => {
+      try {
+        const response = await this.api.get(`/repos/${this.owner}/${this.repo}/contents/_layouts/default.html`);
+        
+        return {
+          name: response.data.name,
+          content: decode(response.data.content),
+          sha: response.data.sha,
+          path: response.data.path,
+        };
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          // If default.html doesn't exist, return default layout
+          return {
+            name: 'default.html',
+            content: this.getDefaultLayoutContent(),
+            sha: '',
+            path: '_layouts/default.html',
+          };
+        }
+        throw new Error('Failed to fetch default layout');
+      }
+    });
+  }
+
   private sanitizeContent(content: string): string {
     if (!content) return '';
     
@@ -727,6 +786,39 @@ GitBlog simplifica el proceso de creacion y mantenimiento de blogs tecnicos, per
 **Creado con GitBlog por Sergio Lopez**
 
 [Crea tu blog con GitBlog](https://bolt.new)
+`;
+  }
+
+  private getDefaultLayoutContent(): string {
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }} | {{ site.title }}</title>
+
+  <!-- CSS del tema minima -->
+  <link rel="stylesheet" href="{{ '/assets/main.css' | relative_url }}">
+  
+  <!-- Tu CSS personalizado -->
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+
+  {% seo %}
+</head>
+<body>
+  <header>
+    <h1><a href="{{ '/' | relative_url }}">{{ site.title }}</a></h1>
+  </header>
+
+  <main>
+    {{ content }}
+  </main>
+
+  <footer>
+    <p>&copy; {{ site.author.name }}</p>
+  </footer>
+</body>
+</html>
 `;
   }
 
