@@ -10,7 +10,7 @@ import { FloatingActionButtons } from '@/components/FloatingActionButtons';
 import { localStorageService } from '@/lib/localStorageService';
 import { syncService } from '@/lib/syncService';
 import { BlogPost } from '@/types/BlogPost';
-import { Cloud, CloudOff } from 'lucide-react-native';
+import { Cloud, CloudOff, ExternalLink } from 'lucide-react-native';
 import { useTheme } from '@/components/ThemeProvider';
 import { t } from '@/lib/i18n';
 
@@ -238,6 +238,31 @@ export default function PostsScreen() {
       fontSize: 12,
       textAlign: 'center',
     },
+    attribution: {
+      backgroundColor: theme.colors.surface,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+    },
+    attributionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    attributionText: {
+      color: theme.colors.onSurfaceVariant,
+      fontSize: 12,
+      marginRight: 8,
+      textAlign: 'center',
+    },
+    boltText: {
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
   });
 
   return (
@@ -288,6 +313,16 @@ export default function PostsScreen() {
           </Text>
         </View>
       )}
+
+      {/* Attribution */}
+      <Card style={dynamicStyles.attribution}>
+        <View style={dynamicStyles.attributionContent}>
+          <Text style={dynamicStyles.attributionText}>
+            Built with <Text style={dynamicStyles.boltText}>Bolt.new</Text> by <Text style={dynamicStyles.boltText}>Serloro (Sergio Lopez)</Text>
+          </Text>
+          <ExternalLink size={14} color={theme.colors.onSurfaceVariant} />
+        </View>
+      </Card>
 
       {posts.length > 0 && (
         <>

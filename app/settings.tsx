@@ -472,6 +472,30 @@ export default function SettingsScreen() {
       color: theme.colors.onSurfaceVariant,
       marginTop: 2,
     },
+    attribution: {
+      backgroundColor: theme.colors.surface,
+      marginBottom: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+    },
+    attributionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    attributionText: {
+      color: theme.colors.onSurfaceVariant,
+      fontSize: 12,
+      marginRight: 8,
+      textAlign: 'center',
+    },
+    boltText: {
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
   });
 
   const renderGitHubSettings = () => (
@@ -888,6 +912,16 @@ export default function SettingsScreen() {
             </Menu>
           </View>
         </Card.Content>
+      </Card>
+
+      {/* Attribution */}
+      <Card style={dynamicStyles.attribution}>
+        <View style={dynamicStyles.attributionContent}>
+          <Text style={dynamicStyles.attributionText}>
+            Built with <Text style={dynamicStyles.boltText}>Bolt.new</Text> by <Text style={dynamicStyles.boltText}>Serloro (Sergio Lopez)</Text>
+          </Text>
+          <ExternalLink size={14} color={theme.colors.onSurfaceVariant} />
+        </View>
       </Card>
 
       <Card style={styles.dangerCard}>
